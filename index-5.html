@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>প্রার্থী নিবন্ধন পোর্টাল</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>html,body,#root{margin:0;padding:0;min-height:100vh;}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+const DIVISIONS=["ঢাকা","চট্টগ্রাম","রাজশাহী","খুলনা","বরিশাল","সিলেট","রংপুর","ময়মনসিংহ"];
+const DISTRICTS={"ঢাকা":["ঢাকা","গাজীপুর","নারায়ণগঞ্জ","মুন্সিগঞ্জ","মানিকগঞ্জ","নরসিংদী","কিশোরগঞ্জ"],"চট্টগ্রাম":["চট্টগ্রাম","কক্সবাজার","রাঙ্গামাটি","বান্দরবান","খাগড়াছড়ি","ফেনী","নোয়াখালী","লক্ষ্মীপুর"],"রাজশাহী":["রাজশাহী","নওগাঁ","নাটোর","সিরাজগঞ্জ","পাবনা","বগুড়া","জয়পুরহাট","চাঁপাইনবাবগঞ্জ"],"খুলনা":["খুলনা","বাগেরহাট","সাতক্ষীরা","যশোর","ঝিনাইদহ","নড়াইল","মাগুরা","কুষ্টিয়া"],"বরিশাল":["বরিশাল","পটুয়াখালী","ভোলা","পিরোজপুর","ঝালকাঠি","বরগুনা"],"সিলেট":["সিলেট","মৌলভীবাজার","হবিগঞ্জ","সুনামগঞ্জ"],"রংপুর":["রংপুর","দিনাজপুর","ঠাকুরগাঁও","পঞ্চগড়","নীলফামারী","লালমনিরহাট","কুড়িগ্রাম","গাইবান্ধা"],"ময়মনসিংহ":["ময়মনসিংহ","নেত্রকোণা","শেরপুর","জামালপুর"]};
+const UPAZILAS=["সদর","পূর্ব","পশ্চিম","উত্তর","দক্ষিণ","কেন্দ্র","আদর্শ সদর","কোতোয়ালী","পাঁচলাইশ","বন্দর","ইশ্বরদী","মতলব"];
+const EDUCATIONS=["PSC","JSC","SSC","HSC","ডিপ্লোমা","স্নাতক","স্নাতকোত্তর","অন্যান্য"];
+
+function removeBackground(canvas){
+  const ctx=canvas.getContext("2d"),d=ctx.getImageData(0,0,canvas.width,canvas.height);
+  for(let i=0;i<d.data.length;i+=4)if(d.data[i]>200&&d.data[i+1]>200&&d.data[i+2]>200)d.data[i+3]=0;
+  ctx.putImageData(d,0,0);return canvas.toDataURL("image/png");
+}
+function b64Blob(b64,type){const s=atob(b64.split(",")[1]),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return new Blob([a],{type});}
+function dlBlob(blob,name){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove();},300);}
+function slug(str){return(str||"candidate").replace(/\s+/g,"_").replace(/[^\w_]/g,"");}
+
+const CSS=`
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;700&family=Noto+Sans+Bengali:wght@300;400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#0d1117;--s:#161b22;--s2:#1c2333;--b:#30363d;--a:#1a8f5f;--a2:#0ea97a;--g:#d4a843;--t:#e6edf3;--m:#8b949e;--d:#f85149;--ok:#3fb950;--w:#e3b341;--inf:#58a6ff;--r:12px;}
+body{font-family:'Noto Sans Bengali',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;}
+.app{min-height:100vh;display:flex;flex-direction:column;}
+.hdr{background:linear-gradient(135deg,#0d2818,#0a1f30);border-bottom:1px solid var(--a);padding:11px 22px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(26,143,95,.15);position:sticky;top:0;z-index:200;}
+.hlogo{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:#fff;flex-shrink:0;}
+.htitle h1{font-family:'Noto Serif Bengali',serif;font-size:15px;font-weight:700;color:var(--g);}
+.htitle p{font-size:11px;color:var(--m);}
+.hright{margin-left:auto;display:flex;align-items:center;gap:9px;}
+.hbadge{background:rgba(26,143,95,.15);border:1px solid var(--a);color:var(--a2);padding:4px 11px;border-radius:20px;font-size:12px;}
+.abadge{background:rgba(212,168,67,.15);border:1px solid var(--g);color:var(--g);padding:4px 11px;border-radius:20px;font-size:12px;}
+.logbtn{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--d);padding:4px 11px;border-radius:20px;font-size:12px;cursor:pointer;transition:all .2s;}
+.logbtn:hover{background:rgba(248,81,73,.2);}
+.page{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;background:radial-gradient(ellipse at 20% 50%,rgba(26,143,95,.06),transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(212,168,67,.04),transparent 50%);}
+.card{background:var(--s);border:1px solid var(--b);border-radius:var(--r);width:100%;max-width:500px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+.cwide{max-width:750px;}
+.ch{background:linear-gradient(135deg,#0d2818,#0a1f30);padding:20px 26px;border-bottom:1px solid rgba(26,143,95,.3);}
+.ch h2{font-family:'Noto Serif Bengali',serif;font-size:18px;font-weight:700;color:var(--g);}
+.ch p{font-size:12px;color:var(--m);margin-top:3px;}
+.cb{padding:24px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid .full{grid-column:1/-1;}
+@media(max-width:580px){.grid{grid-template-columns:1fr;}.grid .full{grid-column:1;}}
+.fld{display:flex;flex-direction:column;gap:5px;}
+.fld label{font-size:12px;font-weight:500;color:var(--m);display:flex;align-items:center;gap:4px;}
+.req{color:var(--d);font-size:11px;}
+.fld input,.fld select,.fld textarea{background:var(--s2);border:1px solid var(--b);border-radius:8px;color:var(--t);font-family:'Noto Sans Bengali',sans-serif;font-size:13px;padding:9px 12px;transition:border-color .2s,box-shadow .2s;outline:none;width:100%;}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--a2);box-shadow:0 0 0 3px rgba(14,169,122,.12);}
+.fld select option{background:var(--s2);}
+.fld textarea{resize:vertical;min-height:74px;}
+.rg{display:flex;gap:9px;flex-wrap:wrap;}
+.rl{display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;color:var(--m);transition:all .2s;}
+.rl.on{border-color:var(--a2);color:var(--a2);background:rgba(14,169,122,.08);}
+.rl input{display:none;}
+.btn{border:none;border-radius:8px;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;font-size:13px;font-weight:600;padding:9px 18px;transition:all .2s;display:inline-flex;align-items:center;gap:6px;}
+.bp{background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;justify-content:center;box-shadow:0 4px 14px rgba(26,143,95,.3);}
+.bp:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(26,143,95,.4);}
+.bp:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.bs{background:var(--s2);border:1px solid var(--b);color:var(--m);}
+.bs:hover{border-color:var(--a);color:var(--a2);}
+.bg{background:rgba(212,168,67,.12);border:1px solid rgba(212,168,67,.4);color:var(--g);}
+.bg:hover{background:rgba(212,168,67,.2);}
+.br{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--d);}
+.br:hover{background:rgba(248,81,73,.2);}
+.bok{background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.4);color:var(--ok);}
+.bok:hover{background:rgba(63,185,80,.2);}
+.bi{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);color:var(--inf);}
+.bi:hover{background:rgba(88,166,255,.2);}
+.bfull{width:100%;}
+.brow{display:flex;gap:9px;margin-top:6px;}
+.brow .bp{flex:1;}
+.steps{display:flex;padding:0 26px;background:var(--s);border-bottom:1px solid var(--b);}
+.si{flex:1;display:flex;flex-direction:column;align-items:center;padding:12px 6px;position:relative;}
+.si:not(:last-child)::after{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);width:1px;height:26px;background:var(--b);}
+.sn{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid var(--b);color:var(--m);background:var(--s2);transition:all .3s;}
+.si.act .sn{border-color:var(--a2);color:var(--a2);background:rgba(14,169,122,.1);}
+.si.dn .sn{border-color:var(--ok);background:var(--ok);color:#fff;}
+.sl{font-size:10px;color:var(--m);margin-top:3px;text-align:center;}
+.si.act .sl{color:var(--a2);}.si.dn .sl{color:var(--ok);}
+.uz{border:2px dashed var(--b);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.uz:hover{border-color:var(--a2);background:rgba(14,169,122,.03);}
+.uz.ok{border-color:var(--ok);background:rgba(63,185,80,.03);}
+.uz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.ui{font-size:24px;margin-bottom:4px;}.ul{font-size:12px;color:var(--m);}.us{font-size:11px;color:var(--m);margin-top:2px;}
+.up{margin-top:7px;display:flex;align-items:center;justify-content:center;}
+.up img{max-height:85px;object-fit:contain;border-radius:5px;}
+.ub{display:inline-block;margin-top:5px;background:rgba(63,185,80,.15);border:1px solid var(--ok);color:var(--ok);border-radius:20px;padding:2px 9px;font-size:11px;}
+.dash{flex:1;padding:20px;max-width:920px;width:100%;margin:0 auto;}
+.dw{background:linear-gradient(135deg,#0d2818,#0a1f30);border:1px solid rgba(26,143,95,.3);border-radius:var(--r);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.av{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;}
+.av img{width:100%;height:100%;object-fit:cover;}
+.wt h3{font-family:'Noto Serif Bengali',serif;font-size:18px;color:var(--g);font-weight:700;}
+.wt p{font-size:12px;color:var(--m);margin-top:2px;}
+.wb{margin-left:auto;background:rgba(63,185,80,.12);border:1px solid var(--ok);color:var(--ok);border-radius:20px;padding:5px 13px;font-size:12px;}
+.ntabs{display:flex;gap:3px;background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:3px;margin-bottom:20px;}
+.ntab{flex:1;padding:8px;border-radius:7px;border:none;background:none;color:var(--m);font-family:'Noto Sans Bengali',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.ntab.on{background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;box-shadow:0 2px 8px rgba(26,143,95,.3);}
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+@media(max-width:580px){.pg{grid-template-columns:1fr;}}
+.pi{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:10px 13px;}
+.pil{font-size:11px;color:var(--m);margin-bottom:3px;}.piv{font-size:13px;color:var(--t);font-weight:500;}
+.pph{display:flex;gap:9px;margin-top:13px;flex-wrap:wrap;}
+.pb{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:9px;text-align:center;flex:1;min-width:115px;}
+.pbl{font-size:11px;color:var(--m);margin-bottom:6px;}.pb img{max-height:72px;object-fit:contain;border-radius:4px;}
+.pbe{height:52px;display:flex;align-items:center;justify-content:center;color:var(--m);font-size:20px;}
+.tp{animation:fi .3s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+.st{font-family:'Noto Serif Bengali',serif;font-size:14px;color:var(--g);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.st::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--b),transparent);}
+.oc{background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:16px;margin-bottom:9px;display:flex;align-items:center;gap:13px;flex-wrap:wrap;}
+.oi{flex:1;}.oi h4{font-size:13px;font-weight:600;color:var(--t);}.oi p{font-size:11px;color:var(--m);margin-top:2px;}
+.ob{background:rgba(26,143,95,.12);border:1px solid var(--a);color:var(--a2);border-radius:7px;padding:6px 13px;font-family:'Noto Sans Bengali',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;}
+.ob:hover{background:rgba(26,143,95,.2);}
+.sc{display:flex;flex-direction:column;gap:8px;}
+.sci{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.sd{width:50px;height:50px;border-radius:8px;background:linear-gradient(135deg,var(--a),var(--a2));display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+.sdy{font-size:16px;font-weight:700;color:#fff;line-height:1;}.smn{font-size:9px;color:rgba(255,255,255,.7);margin-top:1px;}
+.sif{flex:1;}.sit{font-size:13px;font-weight:600;color:var(--t);}.stm{font-size:11px;color:var(--m);margin-top:2px;}
+.sbg{background:rgba(212,168,67,.12);border:1px solid rgba(212,168,67,.4);color:var(--g);border-radius:6px;padding:2px 9px;font-size:11px;}
+.ll{width:66px;height:66px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;margin:0 auto 13px;box-shadow:0 4px 18px rgba(26,143,95,.3);}
+.lt{text-align:center;font-family:'Noto Serif Bengali',serif;font-size:20px;color:var(--g);font-weight:700;margin-bottom:4px;}
+.ls{text-align:center;font-size:12px;color:var(--m);margin-bottom:20px;}
+.dv{height:1px;background:var(--b);margin:16px 0;position:relative;text-align:center;}
+.dv span{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--s);padding:0 9px;color:var(--m);font-size:11px;}
+.sic{font-size:58px;text-align:center;margin-bottom:13px;animation:pp .5s cubic-bezier(.68,-.55,.27,1.55);}
+@keyframes pp{from{transform:scale(0);}to{transform:scale(1);}}
+.stitle{text-align:center;font-family:'Noto Serif Bengali',serif;font-size:20px;color:var(--ok);font-weight:700;margin-bottom:6px;}
+.ssub{text-align:center;font-size:13px;color:var(--m);}
+.rid{background:var(--s2);border:1px solid var(--a);border-radius:8px;padding:12px;text-align:center;margin:13px 0;}
+.ridl{font-size:11px;color:var(--m);margin-bottom:3px;}.ridv{font-size:20px;font-weight:700;color:var(--g);letter-spacing:2px;}
+/* ADMIN */
+.aw{flex:1;display:flex;min-height:0;}
+.aside{width:210px;background:var(--s);border-right:1px solid var(--b);padding:14px;flex-shrink:0;overflow-y:auto;}
+.aside h3{font-family:'Noto Serif Bengali',serif;font-size:12px;color:var(--g);margin-bottom:11px;padding-bottom:9px;border-bottom:1px solid var(--b);}
+.asb{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--m);margin-bottom:3px;transition:all .2s;border:none;background:none;width:100%;text-align:left;font-family:'Noto Sans Bengali',sans-serif;}
+.asb:hover{background:var(--s2);color:var(--t);}
+.asb.on{background:rgba(26,143,95,.12);color:var(--a2);border:1px solid rgba(26,143,95,.2);}
+.asb .ic{font-size:15px;}
+.asb .cnt{margin-left:auto;background:var(--s2);border-radius:10px;padding:1px 7px;font-size:10px;color:var(--m);}
+.amain{flex:1;padding:22px;overflow-y:auto;}
+.srow{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:20px;}
+@media(max-width:680px){.srow{grid-template-columns:1fr 1fr;}}
+.sc2{background:var(--s);border:1px solid var(--b);border-radius:10px;padding:14px;text-align:center;}
+.sc2 .sv{font-size:26px;font-weight:700;margin-bottom:3px;}
+.sc2 .sl2{font-size:11px;color:var(--m);}
+.sv-t{color:var(--inf);}.sv-p{color:var(--w);}.sv-o{color:var(--ok);}.sv-r{color:var(--d);}
+.tw{background:var(--s);border:1px solid var(--b);border-radius:10px;overflow:hidden;}
+.tt{padding:13px 15px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.tt h3{font-family:'Noto Serif Bengali',serif;font-size:14px;color:var(--g);font-weight:700;flex:1;}
+.sb{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:6px 11px;color:var(--t);font-family:'Noto Sans Bengali',sans-serif;font-size:12px;outline:none;width:190px;transition:border-color .2s;}
+.sb:focus{border-color:var(--a2);}
+.ta{display:flex;gap:7px;flex-wrap:wrap;}
+table{width:100%;border-collapse:collapse;}
+thead th{background:var(--s2);padding:9px 13px;font-size:11px;color:var(--m);font-weight:600;text-align:left;border-bottom:1px solid var(--b);}
+tbody tr{border-bottom:1px solid rgba(48,54,61,.4);transition:background .15s;}
+tbody tr:hover{background:rgba(28,35,51,.5);}
+tbody td{padding:9px 13px;font-size:12px;color:var(--t);}
+tbody tr:last-child{border-bottom:none;}
+.tda{display:flex;gap:5px;flex-wrap:wrap;}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}
+.bp2{background:rgba(227,179,65,.12);border:1px solid rgba(227,179,65,.4);color:var(--w);}
+.bo{background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.4);color:var(--ok);}
+.be{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--d);}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:999;display:flex;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(4px);}
+.modal{background:var(--s);border:1px solid var(--b);border-radius:var(--r);width:100%;max-width:660px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.mh{padding:16px 20px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--s);z-index:1;}
+.mh h3{font-family:'Noto Serif Bengali',serif;font-size:16px;color:var(--g);font-weight:700;}
+.mc{background:none;border:none;color:var(--m);font-size:20px;cursor:pointer;padding:3px;transition:color .2s;}
+.mc:hover{color:var(--d);}
+.mb{padding:20px;}
+.mphoto{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px;}
+.mpb{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:9px;text-align:center;flex:1;min-width:115px;}
+.mpl{font-size:11px;color:var(--m);margin-bottom:5px;}.mpb img{max-height:75px;object-fit:contain;border-radius:4px;}
+.dlb{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:13px 15px;margin-bottom:13px;}
+.dlbl{font-size:12px;color:var(--m);margin-bottom:7px;}
+.dlbt{height:5px;background:var(--b);border-radius:3px;overflow:hidden;}
+.dlbf{height:100%;background:linear-gradient(90deg,var(--a),var(--a2));border-radius:3px;transition:width .3s;}
+.toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--s);border:1px solid var(--ok);color:var(--ok);padding:11px 18px;border-radius:10px;font-size:12px;box-shadow:0 4px 18px rgba(0,0,0,.4);animation:su .3s ease;}
+@keyframes su{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.te{border-color:var(--d);color:var(--d);}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--b);border-radius:3px;}
+`;
+
+function Toast({msg,err,onDone}){
+  React.useEffect(()=>{const t=setTimeout(onDone,2800);return()=>clearTimeout(t);},[]);
+  return <div className={`toast ${err?"te":""}`}>{msg}</div>;
+}
+
+function exportExcel(list){
+  const rows=list.map((c,i)=>({
+    "ক্রম":i+1,"রেজিস্ট্রেশন আইডি":c.rid,
+    "নাম (বাংলা)":c.nameBn,"Name (English)":c.nameEn,
+    "পিতার নাম (বাংলা)":c.fatherBn,"Father Name":c.fatherEn,
+    "মাতার নাম (বাংলা)":c.motherBn,"Mother Name":c.motherEn,
+    "জন্ম তারিখ":c.dob,"পরিচয়পত্র ধরন":c.idType==="nid"?"NID":"জন্ম নিবন্ধন",
+    "পরিচয়পত্র নম্বর":c.idNum,"মোবাইল":c.mobile,"ইমেইল":c.email,
+    "শিক্ষাগত যোগ্যতা":c.education,"বিভাগ":c.division,"জেলা":c.district,
+    "উপজেলা":c.upazila,"পূর্ণ ঠিকানা":c.address,
+    "স্ট্যাটাস":c.status==="approved"?"অনুমোদিত":c.status==="rejected"?"প্রত্যাখ্যাত":"অপেক্ষমাণ",
+    "নিবন্ধন তারিখ":c.regDate||""
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"প্রার্থী");
+  XLSX.writeFile(wb,"candidates_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
+
+async function exportZip(list,setP){
+  const zip=new JSZip();
+  for(let i=0;i<list.length;i++){
+    const c=list[i],n=slug(c.nameEn||c.nameBn)+"_"+c.rid,f=zip.folder(n);
+    if(c.ph)f.file("photo_300x300.jpg",b64Blob(c.ph,"image/jpeg"));
+    if(c.sg)f.file("signature_300x80.png",b64Blob(c.sg,"image/png"));
+    if(c.nid)f.file("nid_card.jpg",b64Blob(c.nid,"image/jpeg"));
+    if(c.doc)f.file("id_document.jpg",b64Blob(c.doc,"image/jpeg"));
+    setP(Math.round(((i+1)/list.length)*80));
+  }
+  setP(90);
+  const blob=await zip.generateAsync({type:"blob"});
+  setP(100);
+  dlBlob(blob,"images_"+new Date().toISOString().slice(0,10)+".zip");
+}
+
+/* LOGIN */
+function Login({onLogin,onAdmin}){
+  const [u,setU]=useState(""),[p,setP]=useState(""),[e,setE]=useState("");
+  const go=()=>{if(!u||!p)return setE("ইউজার নাম ও পাসওয়ার্ড দিন।");setE("");onLogin(u);};
+  return <div className="page"><div className="card" style={{maxWidth:400}}><div className="cb">
+    <div className="ll">প</div>
+    <h2 className="lt">প্রার্থী পোর্টাল</h2>
+    <p className="ls">আপনার অ্যাকাউন্টে প্রবেশ করুন</p>
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <div className="fld"><label>ইউজার নাম <span className="req">*</span></label><input placeholder="ইউজার নাম" value={u} onChange={x=>setU(x.target.value)} onKeyDown={x=>x.key==="Enter"&&go()}/></div>
+      <div className="fld"><label>পাসওয়ার্ড <span className="req">*</span></label><input type="password" placeholder="পাসওয়ার্ড" value={p} onChange={x=>setP(x.target.value)} onKeyDown={x=>x.key==="Enter"&&go()}/></div>
+      {e&&<p style={{color:"var(--d)",fontSize:12}}>{e}</p>}
+      <button className="btn bp bfull" onClick={go}>প্রবেশ করুন →</button>
+    </div>
+    <div className="dv"><span>অথবা</span></div>
+    <button className="btn bg bfull" onClick={onAdmin}>🔐 অ্যাডমিন প্যানেল</button>
+  </div></div></div>;
+}
+
+function AdminLogin({onOk,onBack}){
+  const [u,setU]=useState(""),[p,setP]=useState(""),[e,setE]=useState("");
+  const go=()=>{if(u==="admin"&&p==="admin@123"){setE("");onOk();}else setE("ভুল ইউজার নাম বা পাসওয়ার্ড।");};
+  return <div className="page"><div className="card" style={{maxWidth:380}}><div className="cb">
+    <div className="ll" style={{background:"linear-gradient(135deg,#2d1b00,#c77a25)"}}>⚙️</div>
+    <h2 className="lt">অ্যাডমিন লগইন</h2>
+    <p className="ls">শুধুমাত্র অনুমোদিত প্রশাসকের জন্য</p>
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <div className="fld"><label>অ্যাডমিন ID <span className="req">*</span></label><input placeholder="admin" value={u} onChange={x=>setU(x.target.value)} onKeyDown={x=>x.key==="Enter"&&go()}/></div>
+      <div className="fld"><label>পাসওয়ার্ড <span className="req">*</span></label><input type="password" placeholder="পাসওয়ার্ড" value={p} onChange={x=>setP(x.target.value)} onKeyDown={x=>x.key==="Enter"&&go()}/></div>
+      {e&&<p style={{color:"var(--d)",fontSize:12}}>{e}</p>}
+      <button className="btn bg bfull" onClick={go}>অ্যাডমিন প্যানেলে প্রবেশ →</button>
+      <button className="btn bs bfull" onClick={onBack}>← ফিরে যান</button>
+    </div>
+    <p style={{textAlign:"center",fontSize:11,color:"var(--m)",marginTop:13}}>ডিফল্ট: admin / admin@123</p>
+  </div></div></div>;
+}
+
+/* STEP 1 */
+function Step1({onNext}){
+  const [f,setF]=useState({nameBn:"",nameEn:"",fatherBn:"",fatherEn:"",motherBn:"",motherEn:"",dob:"",idType:"nid",idNum:"",mobile:"",education:"",email:"",division:"",district:"",upazila:"",address:""});
+  const s=k=>e=>setF(p=>({...p,[k]:e.target.value}));
+  const ds=DISTRICTS[f.division]||[];
+  const ok=["nameBn","nameEn","fatherBn","fatherEn","motherBn","motherEn","dob","idNum","mobile","education","email","division","district","upazila","address"].every(k=>f[k].trim());
+  return <div className="page"><div className="card cwide">
+    <div className="ch"><h2>ব্যক্তিগত তথ্য পূরণ করুন</h2><p>সকল তারকা চিহ্নিত তথ্য অবশ্যই পূরণ করতে হবে</p></div>
+    <div className="steps">{["ব্যক্তিগত তথ্য","ডকুমেন্ট আপলোড","সম্পন্ন"].map((x,i)=><div key={i} className={`si ${i===0?"act":""}`}><div className="sn">{i===0?"১":i===1?"২":"✓"}</div><div className="sl">{x}</div></div>)}</div>
+    <div className="cb"><div className="grid">
+      <div className="fld"><label>নাম (বাংলা) <span className="req">*</span></label><input placeholder="বাংলায় নাম" value={f.nameBn} onChange={s("nameBn")}/></div>
+      <div className="fld"><label>Name (English) <span className="req">*</span></label><input placeholder="Name in English" value={f.nameEn} onChange={s("nameEn")}/></div>
+      <div className="fld"><label>পিতার নাম (বাংলা) <span className="req">*</span></label><input placeholder="পিতার নাম" value={f.fatherBn} onChange={s("fatherBn")}/></div>
+      <div className="fld"><label>Father's Name <span className="req">*</span></label><input placeholder="Father's name" value={f.fatherEn} onChange={s("fatherEn")}/></div>
+      <div className="fld"><label>মাতার নাম (বাংলা) <span className="req">*</span></label><input placeholder="মাতার নাম" value={f.motherBn} onChange={s("motherBn")}/></div>
+      <div className="fld"><label>Mother's Name <span className="req">*</span></label><input placeholder="Mother's name" value={f.motherEn} onChange={s("motherEn")}/></div>
+      <div className="fld"><label>জন্ম তারিখ <span className="req">*</span></label><input type="date" value={f.dob} onChange={s("dob")}/></div>
+      <div className="fld"><label>পরিচয়পত্রের ধরন <span className="req">*</span></label>
+        <div className="rg">{[["nid","NID"],["birth","জন্ম নিবন্ধন"]].map(([v,l])=><label key={v} className={`rl ${f.idType===v?"on":""}`} onClick={()=>setF(p=>({...p,idType:v}))}><input type="radio" name="idt"/>{l}</label>)}</div>
+      </div>
+      <div className="fld full"><label>{f.idType==="nid"?"NID নম্বর":"জন্ম নিবন্ধন নম্বর"} <span className="req">*</span></label><input placeholder={f.idType==="nid"?"১৭ সংখ্যার NID":"জন্ম নিবন্ধন নম্বর"} value={f.idNum} onChange={s("idNum")}/></div>
+      <div className="fld"><label>মোবাইল নম্বর <span className="req">*</span></label><input placeholder="01XXXXXXXXX" value={f.mobile} onChange={s("mobile")}/></div>
+      <div className="fld"><label>শিক্ষাগত যোগ্যতা <span className="req">*</span></label><select value={f.education} onChange={s("education")}><option value="">নির্বাচন করুন</option>{EDUCATIONS.map(e=><option key={e} value={e}>{e}</option>)}</select></div>
+      <div className="fld full"><label>ইমেইল <span className="req">*</span></label><input type="email" placeholder="example@email.com" value={f.email} onChange={s("email")}/></div>
+      <div className="fld"><label>বিভাগ <span className="req">*</span></label><select value={f.division} onChange={e=>setF(p=>({...p,division:e.target.value,district:"",upazila:""}))}><option value="">বিভাগ নির্বাচন করুন</option>{DIVISIONS.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+      <div className="fld"><label>জেলা <span className="req">*</span></label><select value={f.district} onChange={s("district")} disabled={!f.division}><option value="">জেলা নির্বাচন করুন</option>{ds.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+      <div className="fld"><label>উপজেলা <span className="req">*</span></label><select value={f.upazila} onChange={s("upazila")} disabled={!f.district}><option value="">উপজেলা নির্বাচন করুন</option>{UPAZILAS.map(u=><option key={u} value={u}>{u}</option>)}</select></div>
+      <div className="fld full"><label>পূর্ণ ঠিকানা <span className="req">*</span></label><textarea placeholder="গ্রাম/মহল্লা, ডাকঘর, থানা সহ পূর্ণ ঠিকানা লিখুন" value={f.address} onChange={s("address")}/></div>
+    </div>
+    <div style={{marginTop:16}}>
+      <button className="btn bp bfull" onClick={()=>ok&&onNext(f)} style={{opacity:ok?1:.6}}>পরবর্তী ধাপ: ডকুমেন্ট আপলোড →</button>
+      {!ok&&<p style={{color:"var(--d)",fontSize:11,marginTop:6,textAlign:"center"}}>সকল তথ্য পূরণ করুন</p>}
+    </div></div>
+  </div></div>;
+}
+
+/* STEP 2 */
+function Step2({pd,onComplete,onBack}){
+  const [nid,setNid]=useState(null),[doc,setDoc]=useState(null),[ph,setPh]=useState(null),[sg,setSg]=useState(null),[proc,setProc]=useState(false);
+  const rf=(file,cb)=>{const r=new FileReader();r.onload=e=>cb(e.target.result);r.readAsDataURL(file);};
+  const rz=(file,fn,w,h)=>rf(file,src=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);fn(c.toDataURL("image/jpeg",.92));};img.src=src;});
+  const hs=file=>{setProc(true);rf(file,src=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=300;c.height=80;c.getContext("2d").drawImage(img,0,0,300,80);setSg(removeBackground(c));setProc(false);};img.src=src;});};
+  const can=nid&&doc&&ph&&sg;
+  return <div className="page"><div className="card cwide">
+    <div className="ch"><h2>ডকুমেন্ট ও ছবি আপলোড করুন</h2><p>সকল ডকুমেন্ট স্পষ্ট ও পাঠযোগ্য হতে হবে</p></div>
+    <div className="steps">{["ব্যক্তিগত তথ্য","ডকুমেন্ট আপলোড","সম্পন্ন"].map((x,i)=><div key={i} className={`si ${i===1?"act":i===0?"dn":""}`}><div className="sn">{i===0?"✓":i===1?"২":"৩"}</div><div className="sl">{x}</div></div>)}</div>
+    <div className="cb"><div className="grid">
+      <div className="fld full"><label>জাতীয় পরিচয়পত্র (NID কার্ড) — উভয় পৃষ্ঠা <span className="req">*</span></label>
+        <div className={`uz ${nid?"ok":""}`}><input type="file" accept="image/*" onChange={e=>e.target.files[0]&&rf(e.target.files[0],setNid)}/>
+          {!nid?<><div className="ui">🪪</div><div className="ul">NID কার্ডের ছবি বা স্ক্যান</div><div className="us">যেকোনো সাইজ • JPG, PNG</div></>:<><div className="up"><img src={nid} alt="nid"/></div><span className="ub">✓ আপলোড সম্পন্ন</span></>}
+        </div>
+      </div>
+      <div className="fld full"><label>NID / জন্ম নিবন্ধন সনদ (ডিজিটাল কপি) <span className="req">*</span></label>
+        <div className={`uz ${doc?"ok":""}`}><input type="file" accept="image/*,application/pdf" onChange={e=>e.target.files[0]&&rf(e.target.files[0],setDoc)}/>
+          {!doc?<><div className="ui">📄</div><div className="ul">NID / জন্ম নিবন্ধন সনদ</div><div className="us">JPG, PNG, PDF গ্রহণযোগ্য</div></>:<><div style={{fontSize:36,marginBottom:4}}>✅</div><span className="ub">✓ ডকুমেন্ট সম্পন্ন</span></>}
+        </div>
+      </div>
+      <div className="fld"><label>প্রার্থীর ছবি (৩০০×৩০০ px) <span className="req">*</span></label>
+        <div className={`uz ${ph?"ok":""}`} style={{minHeight:145}}><input type="file" accept="image/*" onChange={e=>e.target.files[0]&&rz(e.target.files[0],setPh,300,300)}/>
+          {!ph?<><div className="ui">🖼️</div><div className="ul">পাসপোর্ট সাইজ ছবি</div><div className="us">স্বয়ংক্রিয়ভাবে ৩০০×৩০০ হবে</div></>:<><div className="up"><img src={ph} alt="p" style={{width:75,height:75,borderRadius:4}}/></div><span className="ub">✓ ছবি সম্পন্ন</span></>}
+        </div>
+      </div>
+      <div className="fld"><label>স্বাক্ষর (৩০০×৮০ px) <span className="req">*</span></label>
+        <div className={`uz ${sg?"ok":""}`} style={{minHeight:145}}><input type="file" accept="image/*" onChange={e=>e.target.files[0]&&hs(e.target.files[0])} disabled={proc}/>
+          {proc?<><div className="ui">⏳</div><div className="ul">ব্যাকগ্রাউন্ড রিমুভ হচ্ছে...</div></>:!sg?<><div className="ui">✍️</div><div className="ul">স্বাক্ষরের ছবি</div><div className="us">ব্যাকগ্রাউন্ড স্বয়ংক্রিয় রিমুভ • ৩০০×৮০ px</div></>:<><div className="up" style={{background:"repeating-conic-gradient(#555 0% 25%,#333 0% 50%) 0 0/10px 10px",borderRadius:4,padding:4}}><img src={sg} alt="s" style={{height:45,objectFit:"contain"}}/></div><span className="ub">✓ স্বাক্ষর সম্পন্ন</span></>}
+        </div>
+      </div>
+    </div>
+    <div className="brow" style={{marginTop:16}}>
+      <button className="btn bs" style={{padding:"9px 16px"}} onClick={onBack}>← পূর্ববর্তী</button>
+      <button className="btn bp" onClick={()=>can&&onComplete({...pd,nid,doc,ph,sg})} style={{opacity:can?1:.6}}>রেজিস্ট্রেশন সম্পন্ন করুন ✓</button>
+    </div>
+    {!can&&<p style={{color:"var(--d)",fontSize:11,marginTop:6,textAlign:"center"}}>সকল ডকুমেন্ট আপলোড করুন</p>}
+    </div>
+  </div></div>;
+}
+
+/* SUCCESS */
+function Success({regId,onDash}){
+  return <div className="page"><div className="card" style={{maxWidth:430}}><div className="cb" style={{textAlign:"center",padding:32}}>
+    <div className="sic">🎉</div>
+    <h2 className="stitle">রেজিস্ট্রেশন সফল!</h2>
+    <p className="ssub">আপনার রেজিস্ট্রেশন সফলভাবে সম্পন্ন হয়েছে।</p>
+    <div className="rid"><div className="ridl">আপনার রেজিস্ট্রেশন আইডি</div><div className="ridv">{regId}</div></div>
+    <p style={{fontSize:12,color:"var(--m)",marginBottom:16}}>এই আইডিটি সংরক্ষণ করুন।</p>
+    <button className="btn bp bfull" onClick={onDash}>ড্যাশবোর্ডে যান →</button>
+  </div></div></div>;
+}
+
+/* CANDIDATE DASHBOARD */
+const SCH=[{day:"১৫",month:"মার্চ",title:"বাংলা ব্যাকরণ ও রচনা",time:"সকাল ৯:০০ – ১১:০০",tag:"বাংলা"},{day:"১৭",month:"মার্চ",title:"সাধারণ গণিত",time:"দুপুর ২:০০ – ৪:০০",tag:"গণিত"},{day:"১৯",month:"মার্চ",title:"সাধারণ জ্ঞান",time:"সকাল ১০:০০ – ১২:০০",tag:"সাধারণ জ্ঞান"},{day:"২২",month:"মার্চ",title:"ইংরেজি ভাষা",time:"বিকাল ৩:০০ – ৫:০০",tag:"ইংরেজি"}];
+function CandidateDash({user,rid,data}){
+  const [tab,setTab]=useState(0),[books,setBooks]=useState([{n:"সিভিল সার্ভিস হ্যান্ডবুক ২০২৪",s:"৪.২ MB",d:"০১ মার্চ"},{n:"বাংলাদেশ বিষয়াবলি গাইড",s:"৬.৮ MB",d:"১৫ ফেব্রুয়ারি"}]);
+  const [bf,setBf]=useState(null),[sf,setSf]=useState(null);
+  const tabs=["👤 প্রোফাইল","📚 অকুপেশন ও সিলেবাস","📅 ক্লাস শিডিউল"];
+  return <div style={{flex:1,background:"var(--bg)"}}><div className="dash">
+    <div className="dw">
+      <div className="av">{data?.ph?<img src={data.ph} alt="av"/>:user?.charAt(0)?.toUpperCase()}</div>
+      <div className="wt"><h3>স্বাগতম, {data?.nameBn||user}!</h3><p>আইডি: {rid} • {data?.education||"প্রার্থী"}</p></div>
+      <div className="wb">✅ যাচাইকৃত</div>
+    </div>
+    <div className="ntabs">{tabs.map((t,i)=><button key={i} className={`ntab ${tab===i?"on":""}`} onClick={()=>setTab(i)}>{t}</button>)}</div>
+    {tab===0&&<div className="tp">
+      <div className="st">🪪 ব্যক্তিগত তথ্য</div>
+      <div className="pg">
+        {[["নাম (বাংলা)",data?.nameBn],["Name (English)",data?.nameEn],["পিতার নাম",data?.fatherBn],["Father",data?.fatherEn],["মাতার নাম",data?.motherBn],["Mother",data?.motherEn],["জন্ম তারিখ",data?.dob],["মোবাইল",data?.mobile],["ইমেইল",data?.email],["শিক্ষা",data?.education],["বিভাগ",data?.division],["জেলা",data?.district],["উপজেলা",data?.upazila]].map(([l,v],i)=><div key={i} className="pi"><div className="pil">{l}</div><div className="piv">{v||"—"}</div></div>)}
+        <div className="pi" style={{gridColumn:"1/-1"}}><div className="pil">পূর্ণ ঠিকানা</div><div className="piv">{data?.address||"—"}</div></div>
+      </div>
+      <div className="pph">
+        {[["ছবি",data?.ph,"🖼️"],["স্বাক্ষর",data?.sg,"✍️"],["NID",data?.nid,"🪪"]].map(([l,src,ic],i)=><div key={i} className="pb"><div className="pbl">{l}</div>{src?<img src={src} alt={l}/>:<div className="pbe">{ic}</div>}</div>)}
+      </div>
+    </div>}
+    {tab===1&&<div className="tp">
+      <div className="st">🏛️ অকুপেশন</div>
+      <div className="oc"><div style={{fontSize:28}}>⚖️</div><div className="oi"><h4>সিভিল সার্ভিস (BCS)</h4><p>Bangladesh Civil Service</p></div><span style={{background:"rgba(63,185,80,.1)",border:"1px solid var(--ok)",color:"var(--ok)",borderRadius:6,padding:"2px 8px",fontSize:11}}>সক্রিয়</span></div>
+      <div className="st" style={{marginTop:20}}>📖 বই / সিলেবাস</div>
+      {books.map((b,i)=><div key={i} className="oc"><div style={{fontSize:26}}>📗</div><div className="oi"><h4>{b.n}</h4><p>{b.s} • {b.d}</p></div><button className="ob">⬇ ডাউনলোড</button></div>)}
+      <div className={`uz ${bf?"ok":""}`} style={{marginTop:9}}><input type="file" accept=".pdf,.doc,.docx" onChange={e=>{if(e.target.files[0]){setBf(e.target.files[0]);setBooks(p=>[...p,{n:e.target.files[0].name,s:(e.target.files[0].size/1024/1024).toFixed(1)+" MB",d:"আজকে"}]);}}}/>
+        {!bf?<><div className="ui">📤</div><div className="ul">নতুন বই / সিলেবাস আপলোড</div><div className="us">PDF, DOC, DOCX</div></>:<><div style={{fontSize:32}}>✅</div><span className="ub">✓ আপলোড সম্পন্ন</span></>}
+      </div>
+    </div>}
+    {tab===2&&<div className="tp">
+      <div className="st">📅 ক্লাস শিডিউল</div>
+      <div className="sc">{SCH.map((x,i)=><div key={i} className="sci"><div className="sd"><div className="sdy">{x.day}</div><div className="smn">{x.month}</div></div><div className="sif"><div className="sit">{x.title}</div><div className="stm">🕐 {x.time}</div></div><div className="sbg">{x.tag}</div></div>)}</div>
+      <div style={{marginTop:16}}>
+        <div className="st">📤 নতুন শিডিউল আপলোড</div>
+        <div className={`uz ${sf?"ok":""}`}><input type="file" accept=".pdf,.doc,.docx,image/*" onChange={e=>e.target.files[0]&&setSf(e.target.files[0])}/>
+          {!sf?<><div className="ui">📋</div><div className="ul">ক্লাস শিডিউল আপলোড করুন</div><div className="us">PDF, DOC, Image</div></>:<><div style={{fontSize:32}}>✅</div><span className="ub">✓ {sf.name} আপলোড হয়েছে</span></>}
+        </div>
+      </div>
+    </div>}
+  </div></div>;
+}
+
+/* CANDIDATE MODAL */
+function CModal({c,onClose,onApprove,onReject}){
+  return <div className="ov" onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="modal">
+      <div className="mh"><h3>প্রার্থীর বিস্তারিত</h3><button className="mc" onClick={onClose}>✕</button></div>
+      <div className="mb">
+        <div style={{display:"flex",alignItems:"center",gap:13,marginBottom:15}}>
+          <div className="av" style={{width:52,height:52,fontSize:20}}>{c.ph?<img src={c.ph} alt="av"/>:(c.nameEn||"?").charAt(0)}</div>
+          <div><div style={{fontSize:15,fontWeight:700,color:"var(--t)"}}>{c.nameBn}</div><div style={{fontSize:12,color:"var(--m)"}}>{c.nameEn} • {c.rid}</div></div>
+          <div style={{marginLeft:"auto"}}>
+            {c.status==="approved"&&<span className="badge bo">✓ অনুমোদিত</span>}
+            {c.status==="rejected"&&<span className="badge be">✕ প্রত্যাখ্যাত</span>}
+            {c.status==="pending"&&<span className="badge bp2">⏳ অপেক্ষমাণ</span>}
+          </div>
+        </div>
+        <div className="pg" style={{gap:7}}>
+          {[["পিতার নাম",c.fatherBn],["মাতার নাম",c.motherBn],["জন্ম তারিখ",c.dob],[c.idType==="nid"?"NID":"জন্ম নিবন্ধন",c.idNum],["মোবাইল",c.mobile],["ইমেইল",c.email],["শিক্ষা",c.education],["বিভাগ",c.division],["জেলা",c.district],["উপজেলা",c.upazila]].map(([l,v],i)=><div key={i} className="pi"><div className="pil">{l}</div><div className="piv">{v||"—"}</div></div>)}
+          <div className="pi" style={{gridColumn:"1/-1"}}><div className="pil">পূর্ণ ঠিকানা</div><div className="piv">{c.address}</div></div>
+        </div>
+        <div className="mphoto">
+          {[["ছবি (৩০০×৩০০)",c.ph],["স্বাক্ষর (৩০০×৮০)",c.sg],["NID কার্ড",c.nid],["পরিচয় সনদ",c.doc]].map(([l,src],i)=><div key={i} className="mpb"><div className="mpl">{l}</div>{src?<img src={src} alt={l}/>:<div style={{height:56,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--m)",fontSize:22}}>—</div>}</div>)}
+        </div>
+        <div style={{display:"flex",gap:9,marginTop:16,flexWrap:"wrap"}}>
+          {c.status!=="approved"&&<button className="btn bok" onClick={()=>{onApprove(c.rid);onClose();}}>✓ অনুমোদন করুন</button>}
+          {c.status!=="rejected"&&<button className="btn br" onClick={()=>{onReject(c.rid);onClose();}}>✕ প্রত্যাখ্যান করুন</button>}
+          <button className="btn bs" style={{marginLeft:"auto"}} onClick={onClose}>বন্ধ করুন</button>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+/* ADMIN PANEL */
+function AdminPanel({candidates,setCandidates}){
+  const [view,setView]=useState("dash"),[search,setSearch]=useState(""),[fst,setFst]=useState("all");
+  const [sel,setSel]=useState(null),[dlP,setDlP]=useState(0),[dlA,setDlA]=useState(false),[toast,setToast]=useState(null);
+  const msg=(m,e=false)=>setToast({m,e});
+  const st={total:candidates.length,pending:candidates.filter(c=>c.status==="pending").length,approved:candidates.filter(c=>c.status==="approved").length,rejected:candidates.filter(c=>c.status==="rejected").length};
+  const fl=useMemo(()=>candidates.filter(c=>{
+    const q=search.toLowerCase();
+    return(!q||(c.nameBn||"").includes(q)||(c.nameEn||"").toLowerCase().includes(q)||(c.rid||"").includes(q)||(c.mobile||"").includes(q)||(c.idNum||"").includes(q))&&(fst==="all"||c.status===fst);
+  }),[candidates,search,fst]);
+  const approve=rid=>setCandidates(p=>p.map(c=>c.rid===rid?{...c,status:"approved"}:c));
+  const reject=rid=>setCandidates(p=>p.map(c=>c.rid===rid?{...c,status:"rejected"}:c));
+  const del=rid=>{if(window.confirm("এই প্রার্থীকে মুছে ফেলবেন?"))setCandidates(p=>p.filter(c=>c.rid!==rid));};
+  const approveAll=()=>{setCandidates(p=>p.map(c=>c.status==="pending"?{...c,status:"approved"}:c));msg("সকল অপেক্ষমাণ প্রার্থী অনুমোদিত!");};
+  const hXL=()=>{if(!candidates.length)return msg("কোনো প্রার্থী নেই।",true);exportExcel(fl.length&&fl.length<candidates.length?fl:candidates);msg("Excel ডাউনলোড হচ্ছে...");};
+  const hZip=async()=>{
+    const list=fl.length&&fl.length<candidates.length?fl:candidates;
+    if(!list.length)return msg("কোনো প্রার্থী নেই।",true);
+    setDlA(true);setDlP(0);
+    try{await exportZip(list,setDlP);msg("ZIP ডাউনলোড সম্পন্ন!");}catch{msg("ZIP তৈরিতে সমস্যা।",true);}
+    setDlA(false);setDlP(0);
+  };
+  const sides=[["dash","📊","ড্যাশবোর্ড","all"],["list","👥","সকল প্রার্থী","all"],["approved","✅","অনুমোদিত","approved"],["rejected","❌","প্রত্যাখ্যাত","rejected"],["pending","⏳","অপেক্ষমাণ","pending"]];
+  const showList=view!=="dash";
+
+  return <div className="aw">
+    {toast&&<Toast msg={toast.m} err={toast.e} onDone={()=>setToast(null)}/>}
+    {sel&&<CModal c={sel} onClose={()=>setSel(null)} onApprove={rid=>{approve(rid);msg("অনুমোদন সম্পন্ন!");}} onReject={rid=>{reject(rid);msg("প্রত্যাখ্যাত করা হয়েছে।");}}/>}
+    <div className="aside">
+      <h3>⚙️ অ্যাডমিন মেনু</h3>
+      {sides.map(([v,ic,lb,fs])=><button key={v} className={`asb ${view===v?"on":""}`} onClick={()=>{setView(v);setFst(fs);}}>
+        <span className="ic">{ic}</span>{lb}
+        <span className="cnt">{v==="dash"?"":v==="list"?st.total:v==="approved"?st.approved:v==="rejected"?st.rejected:st.pending}</span>
+      </button>)}
+      <div style={{height:1,background:"var(--b)",margin:"13px 0"}}/>
+      <div style={{fontSize:11,color:"var(--m)",marginBottom:7,fontWeight:600,padding:"0 3px"}}>⬇ ডাউনলোড</div>
+      <button className="asb" style={{color:"var(--ok)"}} onClick={hXL}><span className="ic">📊</span>Excel ডাউনলোড</button>
+      <button className="asb" style={{color:"var(--inf)"}} onClick={hZip} disabled={dlA}><span className="ic">🗜️</span>{dlA?"তৈরি হচ্ছে...":"ZIP ডাউনলোড"}</button>
+    </div>
+
+    <div className="amain">
+      {!showList&&<>
+        <div style={{marginBottom:18}}>
+          <div style={{fontFamily:"'Noto Serif Bengali',serif",fontSize:19,color:"var(--g)",fontWeight:700}}>📊 ড্যাশবোর্ড</div>
+          <p style={{fontSize:12,color:"var(--m)",marginTop:3}}>সকল প্রার্থীর সারসংক্ষেপ</p>
+        </div>
+        <div className="srow">
+          {[["মোট প্রার্থী",st.total,"sv-t","👥"],["অপেক্ষমাণ",st.pending,"sv-p","⏳"],["অনুমোদিত",st.approved,"sv-o","✅"],["প্রত্যাখ্যাত",st.rejected,"sv-r","❌"]].map(([l,v,c,i])=><div key={l} className="sc2"><div className={`sv ${c}`}>{i} {v}</div><div className="sl2">{l}</div></div>)}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+          <button className="btn bok bfull" style={{padding:"13px",fontSize:13}} onClick={hXL}>📊 Excel ডাউনলোড</button>
+          <button className="btn bi bfull" style={{padding:"13px",fontSize:13}} onClick={hZip} disabled={dlA}>{dlA?"⏳ তৈরি হচ্ছে...":"🗜️ সব ছবি ZIP"}</button>
+        </div>
+        {dlA&&<div className="dlb"><div className="dlbl">ZIP তৈরি হচ্ছে... {dlP}%</div><div className="dlbt"><div className="dlbf" style={{width:dlP+"%"}}/></div></div>}
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:9}}>
+          <button className="btn bg" onClick={approveAll} disabled={!st.pending} style={{opacity:st.pending?1:.5}}>⚡ সকল অপেক্ষমাণ অনুমোদন ({st.pending})</button>
+        </div>
+        <div className="tw">
+          <div className="tt"><h3>সাম্প্রতিক নিবন্ধন</h3></div>
+          {!candidates.length?<div style={{textAlign:"center",padding:36,color:"var(--m)"}}>কোনো প্রার্থী নেই।</div>:
+          <table><thead><tr><th>নাম</th><th>মোবাইল</th><th>শিক্ষা</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr></thead>
+          <tbody>{[...candidates].reverse().slice(0,8).map(c=><tr key={c.rid}>
+            <td><div style={{fontWeight:600,fontSize:13}}>{c.nameBn}</div><div style={{fontSize:10,color:"var(--m)"}}>{c.rid}</div></td>
+            <td>{c.mobile}</td><td>{c.education}</td>
+            <td>{c.status==="approved"?<span className="badge bo">✓ অনুমোদিত</span>:c.status==="rejected"?<span className="badge be">✕ প্রত্যাখ্যাত</span>:<span className="badge bp2">⏳ অপেক্ষমাণ</span>}</td>
+            <td><button className="btn bi" style={{padding:"3px 9px",fontSize:11}} onClick={()=>setSel(c)}>👁 দেখুন</button></td>
+          </tr>)}</tbody></table>}
+        </div>
+      </>}
+
+      {showList&&<>
+        {dlA&&<div className="dlb"><div className="dlbl">ZIP তৈরি হচ্ছে... {dlP}%</div><div className="dlbt"><div className="dlbf" style={{width:dlP+"%"}}/></div></div>}
+        <div className="tw">
+          <div className="tt">
+            <h3>{view==="list"?"সকল প্রার্থী":view==="approved"?"✅ অনুমোদিত":view==="rejected"?"❌ প্রত্যাখ্যাত":"⏳ অপেক্ষমাণ"} ({fl.length})</h3>
+            <input className="sb" placeholder="🔍 নাম, আইডি, মোবাইল..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <div className="ta">
+              <button className="btn bok" style={{padding:"5px 11px",fontSize:11}} onClick={hXL}>📊 Excel</button>
+              <button className="btn bi" style={{padding:"5px 11px",fontSize:11}} onClick={hZip} disabled={dlA}>{dlA?"⏳":"🗜️ ZIP"}</button>
+              {view==="pending"&&<button className="btn bg" style={{padding:"5px 11px",fontSize:11}} onClick={approveAll} disabled={!st.pending}>⚡ সব অনুমোদন</button>}
+            </div>
+          </div>
+          {!fl.length?<div style={{textAlign:"center",padding:34,color:"var(--m)"}}>কোনো প্রার্থী পাওয়া যায়নি।</div>:
+          <div style={{overflowX:"auto"}}>
+            <table><thead><tr><th>#</th><th>নাম</th><th>পিতার নাম</th><th>মোবাইল</th><th>শিক্ষা</th><th>জেলা</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr></thead>
+            <tbody>{fl.map((c,i)=><tr key={c.rid}>
+              <td style={{color:"var(--m)",fontSize:11}}>{i+1}</td>
+              <td><div style={{display:"flex",alignItems:"center",gap:7}}>
+                {c.ph?<img src={c.ph} style={{width:28,height:28,borderRadius:"50%",objectFit:"cover"}} alt=""/>:<div style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,var(--a),var(--g))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#fff",fontWeight:700,flexShrink:0}}>{(c.nameBn||"?").charAt(0)}</div>}
+                <div><div style={{fontWeight:600,fontSize:13}}>{c.nameBn}</div><div style={{fontSize:10,color:"var(--m)"}}>{c.rid}</div></div>
+              </div></td>
+              <td style={{fontSize:12}}>{c.fatherBn||"—"}</td>
+              <td style={{fontSize:12}}>{c.mobile}</td>
+              <td style={{fontSize:12}}>{c.education}</td>
+              <td style={{fontSize:12}}>{c.district}</td>
+              <td>{c.status==="approved"?<span className="badge bo">✓ অনুমোদিত</span>:c.status==="rejected"?<span className="badge be">✕ প্রত্যাখ্যাত</span>:<span className="badge bp2">⏳ অপেক্ষমাণ</span>}</td>
+              <td><div className="tda">
+                <button className="btn bi" style={{padding:"3px 8px",fontSize:11}} onClick={()=>setSel(c)}>👁</button>
+                {c.status!=="approved"&&<button className="btn bok" style={{padding:"3px 8px",fontSize:11}} title="অনুমোদন" onClick={()=>{approve(c.rid);msg("অনুমোদন সম্পন্ন!");}}>✓</button>}
+                {c.status!=="rejected"&&<button className="btn br" style={{padding:"3px 8px",fontSize:11}} title="প্রত্যাখ্যান" onClick={()=>{reject(c.rid);msg("প্রত্যাখ্যাত হয়েছে।");}}>✕</button>}
+                <button className="btn br" style={{padding:"3px 8px",fontSize:11}} title="মুছুন" onClick={()=>del(c.rid)}>🗑</button>
+              </div></td>
+            </tr>)}</tbody></table>
+          </div>}
+        </div>
+      </>}
+    </div>
+  </div>;
+}
+
+/* ROOT */
+function App(){
+  const [sc,setSc]=useState("login"),[user,setUser]=useState(null),[s1,setS1]=useState(null),[data,setData]=useState(null),[rid,setRid]=useState(null),[candidates,setCandidates]=useState([]);
+  const logout=()=>{setSc("login");setUser(null);setData(null);setRid(null);setS1(null);};
+  const alogout=()=>{setSc("login");setUser(null);};
+  const completeReg=all=>{
+    const newRid="BD-"+Math.floor(100000+Math.random()*900000);
+    const regDate=new Date().toLocaleDateString("bn-BD");
+    setCandidates(p=>[...p,{...all,rid:newRid,status:"pending",regDate,user}]);
+    setData(all);setRid(newRid);setSc("success");
+  };
+  const isA=sc==="admin",isD=sc==="dashboard";
+  return <>
+    <style>{CSS}</style>
+    <div className="app">
+      <div className="hdr">
+        <div className="hlogo">প</div>
+        <div className="htitle"><h1>প্রার্থী নিবন্ধন পোর্টাল</h1><p>Candidate Registration Portal</p></div>
+        <div className="hright">
+          {isA&&<><span className="abadge">⚙️ অ্যাডমিন</span><button className="logbtn" onClick={alogout}>লগআউট</button></>}
+          {isD&&<><span className="hbadge">👤 {user}</span><button className="logbtn" onClick={logout}>লগআউট</button></>}
+          {!isA&&!isD&&user&&<span className="hbadge">👤 {user}</span>}
+        </div>
+      </div>
+      {sc==="login"&&<Login onLogin={u=>{setUser(u);setSc("reg1");}} onAdmin={()=>setSc("adminLogin")}/>}
+      {sc==="adminLogin"&&<AdminLogin onOk={()=>{setUser("admin");setSc("admin");}} onBack={()=>setSc("login")}/>}
+      {sc==="reg1"&&<Step1 onNext={d=>{setS1(d);setSc("reg2");}}/>}
+      {sc==="reg2"&&<Step2 pd={s1} onComplete={completeReg} onBack={()=>setSc("reg1")}/>}
+      {sc==="success"&&<Success regId={rid} onDash={()=>setSc("dashboard")}/>}
+      {sc==="dashboard"&&<CandidateDash user={user} rid={rid} data={data}/>}
+      {sc==="admin"&&<AdminPanel candidates={candidates} setCandidates={setCandidates}/>}
+    </div>
+  </>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
