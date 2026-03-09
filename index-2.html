@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>প্রার্থী নিবন্ধন পোর্টাল</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>html,body,#root{margin:0;padding:0;min-height:100vh;}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+const DIVISIONS = ["ঢাকা","চট্টগ্রাম","রাজশাহী","খুলনা","বরিশাল","সিলেট","রংপুর","ময়মনসিংহ"];
+const DISTRICTS = {
+  "ঢাকা":["ঢাকা","গাজীপুর","নারায়ণগঞ্জ","মুন্সিগঞ্জ","মানিকগঞ্জ","নরসিংদী","কিশোরগঞ্জ"],
+  "চট্টগ্রাম":["চট্টগ্রাম","কক্সবাজার","রাঙ্গামাটি","বান্দরবান","খাগড়াছড়ি","ফেনী","নোয়াখালী","লক্ষ্মীপুর"],
+  "রাজশাহী":["রাজশাহী","নওগাঁ","নাটোর","সিরাজগঞ্জ","পাবনা","বগুড়া","জয়পুরহাট","চাঁপাইনবাবগঞ্জ"],
+  "খুলনা":["খুলনা","বাগেরহাট","সাতক্ষীরা","যশোর","ঝিনাইদহ","নড়াইল","মাগুরা","কুষ্টিয়া"],
+  "বরিশাল":["বরিশাল","পটুয়াখালী","ভোলা","পিরোজপুর","ঝালকাঠি","বরগুনা"],
+  "সিলেট":["সিলেট","মৌলভীবাজার","হবিগঞ্জ","সুনামগঞ্জ"],
+  "রংপুর":["রংপুর","দিনাজপুর","ঠাকুরগাঁও","পঞ্চগড়","নীলফামারী","লালমনিরহাট","কুড়িগ্রাম","গাইবান্ধা"],
+  "ময়মনসিংহ":["ময়মনসিংহ","নেত্রকোণা","শেরপুর","জামালপুর"],
+};
+const UPAZILAS = ["সদর","পূর্ব","পশ্চিম","উত্তর","দক্ষিণ","কেন্দ্র","আদর্শ সদর","কোতোয়ালী","পাঁচলাইশ","বন্দর","ইশ্বরদী","মতলব"];
+const EDUCATIONS = ["PSC","JSC","SSC","HSC","ডিপ্লোমা","স্নাতক","স্নাতকোত্তর","অন্যান্য"];
+
+function removeBackground(canvas) {
+  const ctx = canvas.getContext("2d");
+  const d = ctx.getImageData(0,0,canvas.width,canvas.height);
+  for(let i=0;i<d.data.length;i+=4)
+    if(d.data[i]>200&&d.data[i+1]>200&&d.data[i+2]>200) d.data[i+3]=0;
+  ctx.putImageData(d,0,0);
+  return canvas.toDataURL("image/png");
+}
+
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;700&family=Noto+Sans+Bengali:wght@300;400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#0d1117;--s:#161b22;--s2:#1c2333;--b:#30363d;--a:#1a8f5f;--a2:#0ea97a;--g:#d4a843;--t:#e6edf3;--m:#8b949e;--d:#f85149;--ok:#3fb950;--r:12px;}
+body{font-family:'Noto Sans Bengali',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;}
+.app{min-height:100vh;display:flex;flex-direction:column;}
+.hdr{background:linear-gradient(135deg,#0d2818,#0a1f30);border-bottom:1px solid var(--a);padding:12px 24px;display:flex;align-items:center;gap:16px;box-shadow:0 4px 20px rgba(26,143,95,.15);position:sticky;top:0;z-index:100;}
+.hdr-logo{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex-shrink:0;}
+.hdr-title h1{font-family:'Noto Serif Bengali',serif;font-size:17px;font-weight:700;color:var(--g);line-height:1.2;}
+.hdr-title p{font-size:12px;color:var(--m);margin-top:2px;}
+.hdr-badge{margin-left:auto;background:rgba(26,143,95,.15);border:1px solid var(--a);color:var(--a2);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px;}
+.page{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;background:radial-gradient(ellipse at 20% 50%,rgba(26,143,95,.06),transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(212,168,67,.04),transparent 50%);}
+.card{background:var(--s);border:1px solid var(--b);border-radius:var(--r);width:100%;max-width:520px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+.card-wide{max-width:740px;}
+.card-hdr{background:linear-gradient(135deg,#0d2818,#0a1f30);padding:24px 28px;border-bottom:1px solid rgba(26,143,95,.3);}
+.card-hdr h2{font-family:'Noto Serif Bengali',serif;font-size:20px;font-weight:700;color:var(--g);}
+.card-hdr p{font-size:13px;color:var(--m);margin-top:4px;}
+.card-body{padding:28px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid .full{grid-column:1/-1;}
+@media(max-width:600px){.grid{grid-template-columns:1fr;}.grid .full{grid-column:1;}}
+.fld{display:flex;flex-direction:column;gap:6px;}
+.fld label{font-size:13px;font-weight:500;color:var(--m);display:flex;align-items:center;gap:4px;}
+.fld label .req{color:var(--d);font-size:11px;}
+.fld input,.fld select,.fld textarea{background:var(--s2);border:1px solid var(--b);border-radius:8px;color:var(--t);font-family:'Noto Sans Bengali',sans-serif;font-size:14px;padding:10px 14px;transition:border-color .2s,box-shadow .2s;outline:none;width:100%;}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--a2);box-shadow:0 0 0 3px rgba(14,169,122,.12);}
+.fld select option{background:var(--s2);}
+.fld textarea{resize:vertical;min-height:80px;}
+.rg{display:flex;gap:12px;flex-wrap:wrap;}
+.rl{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;color:var(--m);transition:all .2s;}
+.rl.on{border-color:var(--a2);color:var(--a2);background:rgba(14,169,122,.08);}
+.rl input{display:none;}
+.btn{border:none;border-radius:8px;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;font-size:14px;font-weight:600;padding:12px 24px;transition:all .2s;display:inline-flex;align-items:center;gap:8px;}
+.btn-p{background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;width:100%;justify-content:center;box-shadow:0 4px 15px rgba(26,143,95,.3);}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(26,143,95,.4);}
+.btn-s{background:var(--s2);border:1px solid var(--b);color:var(--m);}
+.btn-s:hover{border-color:var(--a);color:var(--a2);}
+.btn-row{display:flex;gap:12px;margin-top:8px;}
+.btn-row .btn-p{flex:1;}
+.steps{display:flex;align-items:center;padding:0 28px;background:var(--s);border-bottom:1px solid var(--b);}
+.si{flex:1;display:flex;flex-direction:column;align-items:center;padding:14px 8px;position:relative;}
+.si:not(:last-child)::after{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);width:1px;height:30px;background:var(--b);}
+.sn{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid var(--b);color:var(--m);background:var(--s2);transition:all .3s;}
+.si.act .sn{border-color:var(--a2);color:var(--a2);background:rgba(14,169,122,.1);}
+.si.dn .sn{border-color:var(--ok);background:var(--ok);color:#fff;}
+.sl{font-size:11px;color:var(--m);margin-top:4px;text-align:center;}
+.si.act .sl{color:var(--a2);} .si.dn .sl{color:var(--ok);}
+.uz{border:2px dashed var(--b);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.uz:hover{border-color:var(--a2);background:rgba(14,169,122,.04);}
+.uz.ok{border-color:var(--ok);background:rgba(63,185,80,.04);}
+.uz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.ui{font-size:28px;margin-bottom:6px;} .ul{font-size:13px;color:var(--m);} .us{font-size:11px;color:var(--m);margin-top:3px;}
+.up{margin-top:10px;display:flex;align-items:center;justify-content:center;}
+.up img{max-height:100px;object-fit:contain;border-radius:6px;}
+.ub{display:inline-block;margin-top:6px;background:rgba(63,185,80,.15);border:1px solid var(--ok);color:var(--ok);border-radius:20px;padding:2px 10px;font-size:11px;}
+.dash{flex:1;padding:24px;max-width:920px;width:100%;margin:0 auto;}
+.dw{background:linear-gradient(135deg,#0d2818,#0a1f30);border:1px solid rgba(26,143,95,.3);border-radius:var(--r);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.av{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;}
+.av img{width:100%;height:100%;object-fit:cover;}
+.wt h3{font-family:'Noto Serif Bengali',serif;font-size:20px;color:var(--g);font-weight:700;}
+.wt p{font-size:13px;color:var(--m);margin-top:3px;}
+.wb{margin-left:auto;background:rgba(63,185,80,.12);border:1px solid var(--ok);color:var(--ok);border-radius:20px;padding:6px 16px;font-size:13px;}
+.ntabs{display:flex;gap:4px;background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:4px;margin-bottom:24px;}
+.ntab{flex:1;padding:10px;border-radius:7px;border:none;background:none;color:var(--m);font-family:'Noto Sans Bengali',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.ntab.on{background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;box-shadow:0 2px 8px rgba(26,143,95,.3);}
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:600px){.pg{grid-template-columns:1fr;}}
+.pi{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:12px 16px;}
+.pi .pil{font-size:11px;color:var(--m);margin-bottom:4px;} .pi .piv{font-size:14px;color:var(--t);font-weight:500;}
+.pph{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;}
+.pb{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:12px;text-align:center;flex:1;min-width:130px;}
+.pb .pbl{font-size:11px;color:var(--m);margin-bottom:8px;} .pb img{max-height:80px;object-fit:contain;border-radius:4px;}
+.pb .pbe{height:60px;display:flex;align-items:center;justify-content:center;color:var(--m);font-size:22px;}
+.tp{animation:fi .3s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.st{font-family:'Noto Serif Bengali',serif;font-size:16px;color:var(--g);font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.st::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--b),transparent);}
+.oc{background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:20px;margin-bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.oi{flex:1;} .oi h4{font-size:15px;font-weight:600;color:var(--t);} .oi p{font-size:12px;color:var(--m);margin-top:2px;}
+.ob{background:rgba(26,143,95,.12);border:1px solid var(--a);color:var(--a2);border-radius:8px;padding:8px 16px;font-family:'Noto Sans Bengali',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;}
+.ob:hover{background:rgba(26,143,95,.2);transform:translateY(-1px);}
+.sc{display:flex;flex-direction:column;gap:10px;}
+.sci{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.sd{width:56px;height:56px;border-radius:8px;background:linear-gradient(135deg,var(--a),var(--a2));display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+.sd .dy{font-size:18px;font-weight:700;color:#fff;line-height:1;} .sd .mn{font-size:10px;color:rgba(255,255,255,.7);margin-top:2px;}
+.sif{flex:1;} .sif .sit{font-size:14px;font-weight:600;color:var(--t);} .sif .stm{font-size:12px;color:var(--m);margin-top:2px;}
+.sbg{background:rgba(212,168,67,.12);border:1px solid rgba(212,168,67,.4);color:var(--g);border-radius:6px;padding:3px 10px;font-size:11px;}
+.ll{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;color:#fff;margin:0 auto 16px;box-shadow:0 4px 20px rgba(26,143,95,.3);}
+.lt{text-align:center;font-family:'Noto Serif Bengali',serif;font-size:22px;color:var(--g);font-weight:700;margin-bottom:4px;}
+.ls{text-align:center;font-size:13px;color:var(--m);margin-bottom:24px;}
+.dv{height:1px;background:var(--b);margin:20px 0;position:relative;text-align:center;}
+.dv span{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--s);padding:0 10px;color:var(--m);font-size:12px;}
+.sic{font-size:64px;text-align:center;margin-bottom:16px;animation:pp .5s cubic-bezier(.68,-.55,.27,1.55);}
+@keyframes pp{from{transform:scale(0);}to{transform:scale(1);}}
+.stl{text-align:center;font-family:'Noto Serif Bengali',serif;font-size:22px;color:var(--ok);font-weight:700;margin-bottom:8px;}
+.ss{text-align:center;font-size:14px;color:var(--m);}
+.rid{background:var(--s2);border:1px solid var(--a);border-radius:8px;padding:14px;text-align:center;margin:16px 0;}
+.rid .rl{font-size:12px;color:var(--m);margin-bottom:4px;} .rid .rv{font-size:22px;font-weight:700;color:var(--g);letter-spacing:2px;}
+::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:var(--bg);} ::-webkit-scrollbar-thumb{background:var(--b);border-radius:3px;}
+`;
+
+function Login({onLogin}) {
+  const [u,setU]=useState(""); const [p,setP]=useState(""); const [e,setE]=useState("");
+  const go=()=>{if(!u||!p)return setE("ইউজার নাম ও পাসওয়ার্ড দিন।");setE("");onLogin(u);};
+  return <div className="page"><div className="card" style={{maxWidth:420}}><div className="card-body">
+    <div className="ll">প</div>
+    <h2 className="lt">প্রার্থী পোর্টাল</h2>
+    <p className="ls">আপনার অ্যাকাউন্টে প্রবেশ করুন</p>
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div className="fld"><label>ইউজার নাম <span className="req">*</span></label><input placeholder="ইউজার নাম" value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} /></div>
+      <div className="fld"><label>পাসওয়ার্ড <span className="req">*</span></label><input type="password" placeholder="পাসওয়ার্ড" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} /></div>
+      {e&&<p style={{color:"var(--d)",fontSize:13}}>{e}</p>}
+      <button className="btn btn-p" onClick={go}>প্রবেশ করুন →</button>
+    </div>
+    <div className="dv"><span>নতুন প্রার্থী?</span></div>
+    <p style={{textAlign:"center",fontSize:13,color:"var(--m)"}}>লগইনের পরে <strong style={{color:"var(--a2)"}}>স্বয়ংক্রিয় রেজিস্ট্রেশন</strong> শুরু হবে।</p>
+  </div></div></div>;
+}
+
+function Step1({onNext}) {
+  const [f,setF]=useState({nameBn:"",nameEn:"",fatherBn:"",fatherEn:"",motherBn:"",motherEn:"",dob:"",idType:"nid",idNum:"",mobile:"",education:"",email:"",division:"",district:"",upazila:"",address:""});
+  const s=k=>e=>setF(p=>({...p,[k]:e.target.value}));
+  const ds=DISTRICTS[f.division]||[];
+  const ok=["nameBn","nameEn","fatherBn","fatherEn","motherBn","motherEn","dob","idNum","mobile","education","email","division","district","upazila","address"].every(k=>f[k].trim());
+  return <div className="page"><div className="card card-wide">
+    <div className="card-hdr"><h2>ব্যক্তিগত তথ্য পূরণ করুন</h2><p>সকল তারকা চিহ্নিত তথ্য অবশ্যই পূরণ করতে হবে</p></div>
+    <div className="steps">{["ব্যক্তিগত তথ্য","ডকুমেন্ট আপলোড","সম্পন্ন"].map((x,i)=><div key={i} className={`si ${i===0?"act":""}`}><div className="sn">{i===0?"১":i===1?"২":"✓"}</div><div className="sl">{x}</div></div>)}</div>
+    <div className="card-body"><div className="grid">
+      <div className="fld"><label>নাম (বাংলা) <span className="req">*</span></label><input placeholder="বাংলায় নাম" value={f.nameBn} onChange={s("nameBn")} /></div>
+      <div className="fld"><label>Name (English) <span className="req">*</span></label><input placeholder="Name in English" value={f.nameEn} onChange={s("nameEn")} /></div>
+      <div className="fld"><label>পিতার নাম (বাংলা) <span className="req">*</span></label><input placeholder="পিতার নাম" value={f.fatherBn} onChange={s("fatherBn")} /></div>
+      <div className="fld"><label>Father's Name (English) <span className="req">*</span></label><input placeholder="Father's name" value={f.fatherEn} onChange={s("fatherEn")} /></div>
+      <div className="fld"><label>মাতার নাম (বাংলা) <span className="req">*</span></label><input placeholder="মাতার নাম" value={f.motherBn} onChange={s("motherBn")} /></div>
+      <div className="fld"><label>Mother's Name (English) <span className="req">*</span></label><input placeholder="Mother's name" value={f.motherEn} onChange={s("motherEn")} /></div>
+      <div className="fld"><label>জন্ম তারিখ <span className="req">*</span></label><input type="date" value={f.dob} onChange={s("dob")} /></div>
+      <div className="fld"><label>পরিচয়পত্রের ধরন <span className="req">*</span></label>
+        <div className="rg">{[["nid","NID"],["birth","জন্ম নিবন্ধন"]].map(([v,l])=><label key={v} className={`rl ${f.idType===v?"on":""}`} onClick={()=>setF(p=>({...p,idType:v}))}><input type="radio" name="idt" />{l}</label>)}</div>
+      </div>
+      <div className="fld full"><label>{f.idType==="nid"?"NID নম্বর":"জন্ম নিবন্ধন নম্বর"} <span className="req">*</span></label><input placeholder={f.idType==="nid"?"১৭ সংখ্যার NID":"জন্ম নিবন্ধন নম্বর"} value={f.idNum} onChange={s("idNum")} /></div>
+      <div className="fld"><label>মোবাইল নম্বর <span className="req">*</span></label><input placeholder="01XXXXXXXXX" value={f.mobile} onChange={s("mobile")} /></div>
+      <div className="fld"><label>শিক্ষাগত যোগ্যতা <span className="req">*</span></label><select value={f.education} onChange={s("education")}><option value="">নির্বাচন করুন</option>{EDUCATIONS.map(e=><option key={e} value={e}>{e}</option>)}</select></div>
+      <div className="fld full"><label>ইমেইল <span className="req">*</span></label><input type="email" placeholder="example@email.com" value={f.email} onChange={s("email")} /></div>
+      <div className="fld"><label>বিভাগ <span className="req">*</span></label><select value={f.division} onChange={e=>setF(p=>({...p,division:e.target.value,district:"",upazila:""}))}><option value="">বিভাগ নির্বাচন করুন</option>{DIVISIONS.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+      <div className="fld"><label>জেলা <span className="req">*</span></label><select value={f.district} onChange={s("district")} disabled={!f.division}><option value="">জেলা নির্বাচন করুন</option>{ds.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
+      <div className="fld"><label>উপজেলা <span className="req">*</span></label><select value={f.upazila} onChange={s("upazila")} disabled={!f.district}><option value="">উপজেলা নির্বাচন করুন</option>{UPAZILAS.map(u=><option key={u} value={u}>{u}</option>)}</select></div>
+      <div className="fld full"><label>পূর্ণ ঠিকানা <span className="req">*</span></label><textarea placeholder="গ্রাম/মহল্লা, ডাকঘর, থানা সহ পূর্ণ ঠিকানা লিখুন" value={f.address} onChange={s("address")} /></div>
+    </div>
+    <div style={{marginTop:20}}>
+      <button className="btn btn-p" onClick={()=>ok&&onNext(f)} style={{opacity:ok?1:.6}}>পরবর্তী ধাপ: ডকুমেন্ট আপলোড →</button>
+      {!ok&&<p style={{color:"var(--d)",fontSize:12,marginTop:8,textAlign:"center"}}>সকল তথ্য পূরণ করুন</p>}
+    </div></div>
+  </div></div>;
+}
+
+function Step2({pd,onComplete,onBack}) {
+  const [nid,setNid]=useState(null);const [doc,setDoc]=useState(null);
+  const [ph,setPh]=useState(null);const [sg,setSg]=useState(null);const [proc,setProc]=useState(false);
+  const rf=(file,cb)=>{const r=new FileReader();r.onload=e=>cb(e.target.result);r.readAsDataURL(file);};
+  const rz=(file,fn,w,h)=>rf(file,src=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);fn(c.toDataURL("image/jpeg",.92));};img.src=src;});
+  const hs=file=>{setProc(true);rf(file,src=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=300;c.height=80;c.getContext("2d").drawImage(img,0,0,300,80);setSg(removeBackground(c));setProc(false);};img.src=src;});};
+  const can=nid&&doc&&ph&&sg;
+  return <div className="page"><div className="card card-wide">
+    <div className="card-hdr"><h2>ডকুমেন্ট ও ছবি আপলোড করুন</h2><p>সকল ডকুমেন্ট স্পষ্ট ও পাঠযোগ্য হতে হবে</p></div>
+    <div className="steps">{["ব্যক্তিগত তথ্য","ডকুমেন্ট আপলোড","সম্পন্ন"].map((x,i)=><div key={i} className={`si ${i===1?"act":i===0?"dn":""}`}><div className="sn">{i===0?"✓":i===1?"২":"৩"}</div><div className="sl">{x}</div></div>)}</div>
+    <div className="card-body"><div className="grid">
+      <div className="fld full"><label>জাতীয় পরিচয়পত্র (NID কার্ড) <span className="req">*</span></label>
+        <div className={`uz ${nid?"ok":""}`}><input type="file" accept="image/*" onChange={e=>e.target.files[0]&&rf(e.target.files[0],setNid)} />
+          {!nid?<><div className="ui">🪪</div><div className="ul">NID কার্ডের ছবি/স্ক্যান</div><div className="us">যেকোনো সাইজ • JPG, PNG</div></>:<><div className="up"><img src={nid} alt="nid"/></div><span className="ub">✓ আপলোড সম্পন্ন</span></>}
+        </div>
+      </div>
+      <div className="fld full"><label>NID / জন্ম নিবন্ধন সনদ (ডিজিটাল কপি) <span className="req">*</span></label>
+        <div className={`uz ${doc?"ok":""}`}><input type="file" accept="image/*,application/pdf" onChange={e=>e.target.files[0]&&rf(e.target.files[0],setDoc)} />
+          {!doc?<><div className="ui">📄</div><div className="ul">NID / জন্ম নিবন্ধন আপলোড</div><div className="us">JPG, PNG, PDF গ্রহণযোগ্য</div></>:<><div style={{fontSize:40,marginBottom:6}}>✅</div><span className="ub">✓ ডকুমেন্ট সম্পন্ন</span></>}
+        </div>
+      </div>
+      <div className="fld"><label>প্রার্থীর ছবি (৩০০×৩০০ px) <span className="req">*</span></label>
+        <div className={`uz ${ph?"ok":""}`} style={{minHeight:160}}><input type="file" accept="image/*" onChange={e=>e.target.files[0]&&rz(e.target.files[0],setPh,300,300)} />
+          {!ph?<><div className="ui">🖼️</div><div className="ul">পাসপোর্ট সাইজ ছবি</div><div className="us">স্বয়ংক্রিয়ভাবে ৩০০×৩০০ হবে</div></>:<><div className="up"><img src={ph} alt="p" style={{width:80,height:80,borderRadius:4}}/></div><span className="ub">✓ ছবি সম্পন্ন</span></>}
+        </div>
+      </div>
+      <div className="fld"><label>স্বাক্ষর (৩০০×৮০ px) <span className="req">*</span></label>
+        <div className={`uz ${sg?"ok":""}`} style={{minHeight:160}}><input type="file" accept="image/*" onChange={e=>e.target.files[0]&&hs(e.target.files[0])} disabled={proc} />
+          {proc?<><div className="ui">⏳</div><div className="ul">ব্যাকগ্রাউন্ড রিমুভ হচ্ছে...</div></>:!sg?<><div className="ui">✍️</div><div className="ul">স্বাক্ষরের ছবি আপলোড</div><div className="us">ব্যাকগ্রাউন্ড স্বয়ংক্রিয় রিমুভ হবে • ৩০০×৮০ px</div></>:<><div className="up" style={{background:"repeating-conic-gradient(#555 0% 25%,#333 0% 50%) 0 0/10px 10px",borderRadius:4,padding:4}}><img src={sg} alt="s" style={{height:50,objectFit:"contain"}}/></div><span className="ub">✓ স্বাক্ষর সম্পন্ন</span></>}
+        </div>
+      </div>
+    </div>
+    <div className="btn-row" style={{marginTop:20}}>
+      <button className="btn btn-s" style={{padding:"12px 20px"}} onClick={onBack}>← পূর্ববর্তী</button>
+      <button className="btn btn-p" onClick={()=>can&&onComplete({...pd,nid,doc,ph,sg})} style={{opacity:can?1:.6}}>রেজিস্ট্রেশন সম্পন্ন করুন ✓</button>
+    </div>
+    {!can&&<p style={{color:"var(--d)",fontSize:12,marginTop:8,textAlign:"center"}}>সকল ডকুমেন্ট আপলোড করুন</p>}
+    </div>
+  </div></div>;
+}
+
+function Success({data,onDash}) {
+  const rid="BD-"+Math.floor(100000+Math.random()*900000);
+  return <div className="page"><div className="card" style={{maxWidth:460}}><div className="card-body" style={{textAlign:"center",padding:36}}>
+    <div className="sic">🎉</div>
+    <h2 className="stl">রেজিস্ট্রেশন সফল!</h2>
+    <p className="ss">আপনার রেজিস্ট্রেশন সফলভাবে সম্পন্ন হয়েছে।</p>
+    <div className="rid"><div className="rl">আপনার রেজিস্ট্রেশন আইডি</div><div className="rv">{rid}</div></div>
+    <p style={{fontSize:13,color:"var(--m)",marginBottom:20}}>এই আইডিটি সংরক্ষণ করুন।</p>
+    <button className="btn btn-p" onClick={()=>onDash(rid)}>ড্যাশবোর্ডে যান →</button>
+  </div></div></div>;
+}
+
+const SCH=[
+  {day:"১৫",month:"মার্চ",title:"বাংলা ব্যাকরণ ও রচনা",time:"সকাল ৯:০০ – ১১:০০",tag:"বাংলা"},
+  {day:"১৭",month:"মার্চ",title:"সাধারণ গণিত",time:"দুপুর ২:০০ – ৪:০০",tag:"গণিত"},
+  {day:"১৯",month:"মার্চ",title:"সাধারণ জ্ঞান ও বাংলাদেশ বিষয়াবলি",time:"সকাল ১০:০০ – ১২:০০",tag:"সাধারণ জ্ঞান"},
+  {day:"২২",month:"মার্চ",title:"ইংরেজি ভাষা ও সাহিত্য",time:"বিকাল ৩:০০ – ৫:০০",tag:"ইংরেজি"},
+];
+
+function Dash({user,rid,data}) {
+  const [tab,setTab]=useState(0);
+  const [books,setBooks]=useState([{n:"সিভিল সার্ভিস হ্যান্ডবুক ২০২৪",s:"৪.২ MB",d:"০১ মার্চ ২০২৫"},{n:"বাংলাদেশ বিষয়াবলি – সম্পূর্ণ গাইড",s:"৬.৮ MB",d:"১৫ ফেব্রুয়ারি ২০২৫"}]);
+  const [bf,setBf]=useState(null);const [sf,setSf]=useState(null);
+  const tabs=["👤 প্রোফাইল","📚 অকুপেশন ও সিলেবাস","📅 ক্লাস শিডিউল"];
+  return <div style={{flex:1,background:"var(--bg)"}}><div className="dash">
+    <div className="dw">
+      <div className="av">{data?.ph?<img src={data.ph} alt="av"/>:user?.charAt(0)?.toUpperCase()}</div>
+      <div className="wt"><h3>স্বাগতম, {data?.nameBn||user}!</h3><p>রেজিস্ট্রেশন আইডি: {rid} • {data?.education||"প্রার্থী"}</p></div>
+      <div className="wb">✅ যাচাইকৃত</div>
+    </div>
+    <div className="ntabs">{tabs.map((t,i)=><button key={i} className={`ntab ${tab===i?"on":""}`} onClick={()=>setTab(i)}>{t}</button>)}</div>
+
+    {tab===0&&<div className="tp">
+      <div className="st">🪪 ব্যক্তিগত তথ্য</div>
+      <div className="pg">
+        {[["নাম (বাংলা)",data?.nameBn],["Name (English)",data?.nameEn],["পিতার নাম",data?.fatherBn],["Father's Name",data?.fatherEn],["মাতার নাম",data?.motherBn],["Mother's Name",data?.motherEn],["জন্ম তারিখ",data?.dob],["মোবাইল",data?.mobile],["ইমেইল",data?.email],["শিক্ষাগত যোগ্যতা",data?.education],["বিভাগ",data?.division],["জেলা",data?.district],["উপজেলা",data?.upazila]].map(([l,v],i)=><div key={i} className="pi"><div className="pil">{l}</div><div className="piv">{v||"—"}</div></div>)}
+        <div className="pi" style={{gridColumn:"1/-1"}}><div className="pil">পূর্ণ ঠিকানা</div><div className="piv">{data?.address||"—"}</div></div>
+      </div>
+      <div className="pph">
+        {[["ছবি",data?.ph,"🖼️"],["স্বাক্ষর",data?.sg,"✍️"],["NID",data?.nid,"🪪"]].map(([l,src,ic],i)=><div key={i} className="pb"><div className="pbl">{l}</div>{src?<img src={src} alt={l}/>:<div className="pbe">{ic}</div>}</div>)}
+      </div>
+    </div>}
+
+    {tab===1&&<div className="tp">
+      <div className="st">🏛️ অকুপেশন</div>
+      <div className="oc"><div style={{fontSize:32}}>⚖️</div><div className="oi"><h4>সিভিল সার্ভিস (BCS)</h4><p>Bangladesh Civil Service — General Cadre</p></div><span style={{background:"rgba(63,185,80,.1)",border:"1px solid var(--ok)",color:"var(--ok)",borderRadius:6,padding:"4px 10px",fontSize:12}}>সক্রিয়</span></div>
+      <div className="st" style={{marginTop:24}}>📖 আপলোড করা বই / সিলেবাস</div>
+      {books.map((b,i)=><div key={i} className="oc"><div style={{fontSize:32}}>📗</div><div className="oi"><h4>{b.n}</h4><p>{b.s} • আপলোড: {b.d}</p></div><button className="ob">⬇ ডাউনলোড</button></div>)}
+      <div className={`uz ${bf?"ok":""}`} style={{marginTop:12}}><input type="file" accept=".pdf,.doc,.docx" onChange={e=>{if(e.target.files[0]){setBf(e.target.files[0]);setBooks(p=>[...p,{n:e.target.files[0].name,s:(e.target.files[0].size/1024/1024).toFixed(1)+" MB",d:"আজকে"}]);}}} />
+        {!bf?<><div className="ui">📤</div><div className="ul">নতুন বই / সিলেবাস আপলোড করুন</div><div className="us">PDF, DOC, DOCX গ্রহণযোগ্য</div></>:<><div style={{fontSize:36}}>✅</div><span className="ub">✓ আপলোড হয়েছে</span></>}
+      </div>
+    </div>}
+
+    {tab===2&&<div className="tp">
+      <div className="st">📅 আসন্ন ক্লাস শিডিউল</div>
+      <div className="sc">
+        {SCH.map((x,i)=><div key={i} className="sci"><div className="sd"><div className="dy">{x.day}</div><div className="mn">{x.month}</div></div><div className="sif"><div className="sit">{x.title}</div><div className="stm">🕐 {x.time}</div></div><div className="sbg">{x.tag}</div></div>)}
+      </div>
+      <div style={{marginTop:20}}>
+        <div className="st">📤 নতুন শিডিউল আপলোড</div>
+        <div className={`uz ${sf?"ok":""}`}><input type="file" accept=".pdf,.doc,.docx,image/*" onChange={e=>e.target.files[0]&&setSf(e.target.files[0])} />
+          {!sf?<><div className="ui">📋</div><div className="ul">ক্লাস শিডিউল আপলোড করুন</div><div className="us">PDF, DOC, Image গ্রহণযোগ্য</div></>:<><div style={{fontSize:36}}>✅</div><span className="ub">✓ {sf.name} আপলোড হয়েছে</span></>}
+        </div>
+      </div>
+    </div>}
+  </div></div>;
+}
+
+function App() {
+  const [sc,setSc]=useState("login");const [user,setUser]=useState(null);
+  const [s1,setS1]=useState(null);const [data,setData]=useState(null);const [rid,setRid]=useState(null);
+  return <>
+    <style>{CSS}</style>
+    <div className="app">
+      <div className="hdr">
+        <div className="hdr-logo">প</div>
+        <div className="hdr-title"><h1>প্রার্থী নিবন্ধন পোর্টাল</h1><p>Candidate Registration Portal</p></div>
+        {user&&<div className="hdr-badge">👤 {user}{sc==="dashboard"&&<span onClick={()=>{setSc("login");setUser(null);setData(null);setRid(null);}} style={{cursor:"pointer",color:"var(--d)"}}>লগআউট</span>}</div>}
+      </div>
+      {sc==="login"&&<Login onLogin={u=>{setUser(u);setSc("reg1");}}/>}
+      {sc==="reg1"&&<Step1 onNext={d=>{setS1(d);setSc("reg2");}}/>}
+      {sc==="reg2"&&<Step2 pd={s1} onComplete={d=>{setData(d);setSc("success");}} onBack={()=>setSc("reg1")}/>}
+      {sc==="success"&&<Success data={data} onDash={id=>{setRid(id);setSc("dashboard");}}/>}
+      {sc==="dashboard"&&<Dash user={user} rid={rid} data={data}/>}
+    </div>
+  </>;
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
