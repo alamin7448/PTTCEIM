@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>প্রার্থী নিবন্ধন পোর্টাল</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;700&family=Noto+Sans+Bengali:wght@300;400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d1117;--s:#161b22;--s2:#1c2333;--b:#30363d;
+  --a:#1a8f5f;--a2:#0ea97a;--g:#d4a843;--t:#e6edf3;
+  --m:#8b949e;--d:#f85149;--ok:#3fb950;--w:#e3b341;--inf:#58a6ff;--r:12px;
+}
+body{font-family:'Noto Sans Bengali',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;}
+.app{min-height:100vh;display:flex;flex-direction:column;}
+.hdr{background:linear-gradient(135deg,#0d2818,#0a1f30);border-bottom:1px solid var(--a);padding:11px 22px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(26,143,95,.15);position:sticky;top:0;z-index:200;}
+.hlogo{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:#fff;flex-shrink:0;}
+.htitle h1{font-family:'Noto Serif Bengali',serif;font-size:15px;font-weight:700;color:var(--g);}
+.htitle p{font-size:11px;color:var(--m);}
+.hright{margin-left:auto;display:flex;align-items:center;gap:9px;}
+.hbadge{background:rgba(26,143,95,.15);border:1px solid var(--a);color:var(--a2);padding:4px 11px;border-radius:20px;font-size:12px;}
+.abadge{background:rgba(212,168,67,.15);border:1px solid var(--g);color:var(--g);padding:4px 11px;border-radius:20px;font-size:12px;}
+.logbtn{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--d);padding:4px 11px;border-radius:20px;font-size:12px;cursor:pointer;}
+.logbtn:hover{background:rgba(248,81,73,.2);}
+.page{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;background:radial-gradient(ellipse at 20% 50%,rgba(26,143,95,.06),transparent 60%);}
+.card{background:var(--s);border:1px solid var(--b);border-radius:var(--r);width:100%;max-width:500px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+.cwide{max-width:750px;}
+.ch{background:linear-gradient(135deg,#0d2818,#0a1f30);padding:20px 26px;border-bottom:1px solid rgba(26,143,95,.3);}
+.ch h2{font-family:'Noto Serif Bengali',serif;font-size:18px;font-weight:700;color:var(--g);}
+.ch p{font-size:12px;color:var(--m);margin-top:3px;}
+.cb{padding:24px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.full{grid-column:1/-1;}
+@media(max-width:580px){.grid{grid-template-columns:1fr;}.full{grid-column:1;}}
+.fld{display:flex;flex-direction:column;gap:5px;}
+.fld label{font-size:12px;font-weight:500;color:var(--m);display:flex;align-items:center;gap:4px;}
+.req{color:var(--d);font-size:11px;}
+.fld input,.fld select,.fld textarea{background:var(--s2);border:1px solid var(--b);border-radius:8px;color:var(--t);font-family:'Noto Sans Bengali',sans-serif;font-size:13px;padding:9px 12px;transition:border-color .2s;outline:none;width:100%;}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--a2);box-shadow:0 0 0 3px rgba(14,169,122,.12);}
+.fld select option{background:var(--s2);}
+.fld textarea{resize:vertical;min-height:74px;}
+.rg{display:flex;gap:9px;flex-wrap:wrap;}
+.rl{display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;color:var(--m);transition:all .2s;user-select:none;}
+.rl.on{border-color:var(--a2);color:var(--a2);background:rgba(14,169,122,.08);}
+.btn{border:none;border-radius:8px;cursor:pointer;font-family:'Noto Sans Bengali',sans-serif;font-size:13px;font-weight:600;padding:9px 18px;transition:all .2s;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.bp{background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;box-shadow:0 4px 14px rgba(26,143,95,.3);}
+.bp:hover{transform:translateY(-1px);}
+.bs{background:var(--s2);border:1px solid var(--b);color:var(--m);}
+.bs:hover{border-color:var(--a);color:var(--a2);}
+.bg{background:rgba(212,168,67,.12);border:1px solid rgba(212,168,67,.4);color:var(--g);}
+.bg:hover{background:rgba(212,168,67,.2);}
+.br{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--d);}
+.br:hover{background:rgba(248,81,73,.2);}
+.bok{background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.4);color:var(--ok);}
+.bok:hover{background:rgba(63,185,80,.2);}
+.bi{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);color:var(--inf);}
+.bi:hover{background:rgba(88,166,255,.2);}
+.bfull{width:100%;}
+.brow{display:flex;gap:9px;margin-top:6px;}
+.brow .bp{flex:1;}
+.steps{display:flex;padding:0 26px;background:var(--s);border-bottom:1px solid var(--b);}
+.si{flex:1;display:flex;flex-direction:column;align-items:center;padding:12px 6px;position:relative;}
+.si:not(:last-child)::after{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);width:1px;height:26px;background:var(--b);}
+.sn{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid var(--b);color:var(--m);background:var(--s2);}
+.si.act .sn{border-color:var(--a2);color:var(--a2);background:rgba(14,169,122,.1);}
+.si.dn .sn{border-color:var(--ok);background:var(--ok);color:#fff;}
+.sl{font-size:10px;color:var(--m);margin-top:3px;text-align:center;}
+.si.act .sl{color:var(--a2);}.si.dn .sl{color:var(--ok);}
+.uz{border:2px dashed var(--b);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.uz:hover{border-color:var(--a2);background:rgba(14,169,122,.03);}
+.uz.ok{border-color:var(--ok);background:rgba(63,185,80,.03);}
+.uz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.ui{font-size:24px;margin-bottom:4px;}.ul{font-size:12px;color:var(--m);}.us{font-size:11px;color:var(--m);margin-top:2px;}
+.up{margin-top:7px;display:flex;align-items:center;justify-content:center;}
+.up img{max-height:85px;object-fit:contain;border-radius:5px;}
+.ub{display:inline-block;margin-top:5px;background:rgba(63,185,80,.15);border:1px solid var(--ok);color:var(--ok);border-radius:20px;padding:2px 9px;font-size:11px;}
+.dash{flex:1;padding:20px;max-width:920px;width:100%;margin:0 auto;}
+.dw{background:linear-gradient(135deg,#0d2818,#0a1f30);border:1px solid rgba(26,143,95,.3);border-radius:var(--r);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.av{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;}
+.av img{width:100%;height:100%;object-fit:cover;}
+.wt h3{font-family:'Noto Serif Bengali',serif;font-size:18px;color:var(--g);font-weight:700;}
+.wt p{font-size:12px;color:var(--m);margin-top:2px;}
+.wb{margin-left:auto;background:rgba(63,185,80,.12);border:1px solid var(--ok);color:var(--ok);border-radius:20px;padding:5px 13px;font-size:12px;}
+.ntabs{display:flex;gap:3px;background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:3px;margin-bottom:20px;}
+.ntab{flex:1;padding:8px;border-radius:7px;border:none;background:none;color:var(--m);font-family:'Noto Sans Bengali',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.ntab.on{background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;box-shadow:0 2px 8px rgba(26,143,95,.3);}
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+@media(max-width:580px){.pg{grid-template-columns:1fr;}}
+.pi{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:10px 13px;}
+.pil{font-size:11px;color:var(--m);margin-bottom:3px;}.piv{font-size:13px;color:var(--t);font-weight:500;}
+.pph{display:flex;gap:9px;margin-top:13px;flex-wrap:wrap;}
+.pb{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:9px;text-align:center;flex:1;min-width:115px;}
+.pbl{font-size:11px;color:var(--m);margin-bottom:6px;}.pb img{max-height:72px;object-fit:contain;border-radius:4px;}
+.pbe{height:52px;display:flex;align-items:center;justify-content:center;color:var(--m);font-size:20px;}
+.tp{animation:fi .3s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+.st{font-family:'Noto Serif Bengali',serif;font-size:14px;color:var(--g);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.st::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--b),transparent);}
+.oc{background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:16px;margin-bottom:9px;display:flex;align-items:center;gap:13px;flex-wrap:wrap;}
+.oi{flex:1;}.oi h4{font-size:13px;font-weight:600;color:var(--t);}.oi p{font-size:11px;color:var(--m);margin-top:2px;}
+.ob{background:rgba(26,143,95,.12);border:1px solid var(--a);color:var(--a2);border-radius:7px;padding:6px 13px;font-family:'Noto Sans Bengali',sans-serif;font-size:11px;font-weight:600;cursor:pointer;}
+.sc{display:flex;flex-direction:column;gap:8px;}
+.sci{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.sd{width:50px;height:50px;border-radius:8px;background:linear-gradient(135deg,var(--a),var(--a2));display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+.sdy{font-size:16px;font-weight:700;color:#fff;line-height:1;}.smn{font-size:9px;color:rgba(255,255,255,.7);margin-top:1px;}
+.sif{flex:1;}.sit{font-size:13px;font-weight:600;color:var(--t);}.stm{font-size:11px;color:var(--m);margin-top:2px;}
+.sbg{background:rgba(212,168,67,.12);border:1px solid rgba(212,168,67,.4);color:var(--g);border-radius:6px;padding:2px 9px;font-size:11px;}
+.ll{width:66px;height:66px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--g));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;margin:0 auto 13px;box-shadow:0 4px 18px rgba(26,143,95,.3);}
+.lt{text-align:center;font-family:'Noto Serif Bengali',serif;font-size:20px;color:var(--g);font-weight:700;margin-bottom:4px;}
+.ls{text-align:center;font-size:12px;color:var(--m);margin-bottom:20px;}
+.dv{height:1px;background:var(--b);margin:16px 0;position:relative;text-align:center;}
+.dv span{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--s);padding:0 9px;color:var(--m);font-size:11px;}
+.sic{font-size:58px;text-align:center;margin-bottom:13px;animation:pp .5s cubic-bezier(.68,-.55,.27,1.55);}
+@keyframes pp{from{transform:scale(0);}to{transform:scale(1);}}
+.stitle{text-align:center;font-family:'Noto Serif Bengali',serif;font-size:20px;color:var(--ok);font-weight:700;margin-bottom:6px;}
+.ssub{text-align:center;font-size:13px;color:var(--m);}
+.rid{background:var(--s2);border:1px solid var(--a);border-radius:8px;padding:12px;text-align:center;margin:13px 0;}
+.ridl{font-size:11px;color:var(--m);margin-bottom:3px;}.ridv{font-size:20px;font-weight:700;color:var(--g);letter-spacing:2px;}
+/* ADMIN */
+.aw{flex:1;display:flex;min-height:0;}
+.aside{width:210px;background:var(--s);border-right:1px solid var(--b);padding:14px;flex-shrink:0;}
+.aside h3{font-family:'Noto Serif Bengali',serif;font-size:12px;color:var(--g);margin-bottom:11px;padding-bottom:9px;border-bottom:1px solid var(--b);}
+.asb{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--m);margin-bottom:3px;transition:all .2s;border:none;background:none;width:100%;text-align:left;font-family:'Noto Sans Bengali',sans-serif;}
+.asb:hover{background:var(--s2);color:var(--t);}
+.asb.on{background:rgba(26,143,95,.12);color:var(--a2);border:1px solid rgba(26,143,95,.2);}
+.cnt{margin-left:auto;background:var(--s2);border-radius:10px;padding:1px 7px;font-size:10px;color:var(--m);}
+.amain{flex:1;padding:22px;overflow-y:auto;}
+.srow{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:20px;}
+@media(max-width:680px){.srow{grid-template-columns:1fr 1fr;}}
+.sc2{background:var(--s);border:1px solid var(--b);border-radius:10px;padding:14px;text-align:center;}
+.sv{font-size:26px;font-weight:700;margin-bottom:3px;}
+.sv2{font-size:11px;color:var(--m);}
+.sv-t{color:var(--inf);}.sv-p{color:var(--w);}.sv-o{color:var(--ok);}.sv-r{color:var(--d);}
+.tw{background:var(--s);border:1px solid var(--b);border-radius:10px;overflow:hidden;}
+.tt{padding:13px 15px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.tt h3{font-family:'Noto Serif Bengali',serif;font-size:14px;color:var(--g);font-weight:700;flex:1;}
+.sb{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:6px 11px;color:var(--t);font-family:'Noto Sans Bengali',sans-serif;font-size:12px;outline:none;width:190px;}
+.sb:focus{border-color:var(--a2);}
+.ta{display:flex;gap:7px;flex-wrap:wrap;}
+table{width:100%;border-collapse:collapse;}
+thead th{background:var(--s2);padding:9px 13px;font-size:11px;color:var(--m);font-weight:600;text-align:left;border-bottom:1px solid var(--b);}
+tbody tr{border-bottom:1px solid rgba(48,54,61,.4);transition:background .15s;}
+tbody tr:hover{background:rgba(28,35,51,.5);}
+tbody td{padding:9px 13px;font-size:12px;color:var(--t);}
+tbody tr:last-child{border-bottom:none;}
+.tda{display:flex;gap:5px;flex-wrap:wrap;}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}
+.bp2{background:rgba(227,179,65,.12);border:1px solid rgba(227,179,65,.4);color:var(--w);}
+.bo{background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.4);color:var(--ok);}
+.be{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--d);}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:999;display:flex;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(4px);}
+.modal{background:var(--s);border:1px solid var(--b);border-radius:var(--r);width:100%;max-width:660px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.mh{padding:16px 20px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--s);z-index:1;}
+.mh h3{font-family:'Noto Serif Bengali',serif;font-size:16px;color:var(--g);font-weight:700;}
+.mc{background:none;border:none;color:var(--m);font-size:20px;cursor:pointer;padding:3px;}
+.mc:hover{color:var(--d);}
+.mb{padding:20px;}
+.mphoto{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px;}
+.mpb{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:9px;text-align:center;flex:1;min-width:115px;}
+.mpl{font-size:11px;color:var(--m);margin-bottom:5px;}.mpb img{max-height:75px;object-fit:contain;border-radius:4px;}
+.dlb{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:13px 15px;margin-bottom:13px;}
+.dlbl{font-size:12px;color:var(--m);margin-bottom:7px;}
+.dlbt{height:5px;background:var(--b);border-radius:3px;overflow:hidden;}
+.dlbf{height:100%;background:linear-gradient(90deg,var(--a),var(--a2));border-radius:3px;transition:width .3s;}
+.toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--s);border:1px solid var(--ok);color:var(--ok);padding:11px 18px;border-radius:10px;font-size:12px;box-shadow:0 4px 18px rgba(0,0,0,.4);animation:su .3s ease;}
+@keyframes su{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.te{border-color:var(--d);color:var(--d);}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--b);border-radius:3px;}
+</style>
+</head>
+<body>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#8b949e;font-family:sans-serif;">লোড হচ্ছে...</div></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────
+var DIVISIONS=["ঢাকা","চট্টগ্রাম","রাজশাহী","খুলনা","বরিশাল","সিলেট","রংপুর","ময়মনসিংহ"];
+var DISTRICTS={"ঢাকা":["ঢাকা","গাজীপুর","নারায়ণগঞ্জ","মুন্সিগঞ্জ","মানিকগঞ্জ","নরসিংদী","কিশোরগঞ্জ"],"চট্টগ্রাম":["চট্টগ্রাম","কক্সবাজার","রাঙ্গামাটি","বান্দরবান","খাগড়াছড়ি","ফেনী","নোয়াখালী","লক্ষ্মীপুর"],"রাজশাহী":["রাজশাহী","নওগাঁ","নাটোর","সিরাজগঞ্জ","পাবনা","বগুড়া","জয়পুরহাট","চাঁপাইনবাবগঞ্জ"],"খুলনা":["খুলনা","বাগেরহাট","সাতক্ষীরা","যশোর","ঝিনাইদহ","নড়াইল","মাগুরা","কুষ্টিয়া"],"বরিশাল":["বরিশাল","পটুয়াখালী","ভোলা","পিরোজপুর","ঝালকাঠি","বরগুনা"],"সিলেট":["সিলেট","মৌলভীবাজার","হবিগঞ্জ","সুনামগঞ্জ"],"রংপুর":["রংপুর","দিনাজপুর","ঠাকুরগাঁও","পঞ্চগড়","নীলফামারী","লালমনিরহাট","কুড়িগ্রাম","গাইবান্ধা"],"ময়মনসিংহ":["ময়মনসিংহ","নেত্রকোণা","শেরপুর","জামালপুর"]};
+var UPAZILAS=["সদর","পূর্ব","পশ্চিম","উত্তর","দক্ষিণ","কেন্দ্র","আদর্শ সদর","কোতোয়ালী","পাঁচলাইশ","বন্দর","ইশ্বরদী","মতলব"];
+var EDUCATIONS=["PSC","JSC","SSC","HSC","ডিপ্লোমা","স্নাতক","স্নাতকোত্তর","অন্যান্য"];
+var SCH=[{day:"১৫",month:"মার্চ",title:"বাংলা ব্যাকরণ ও রচনা",time:"সকাল ৯:০০ – ১১:০০",tag:"বাংলা"},{day:"১৭",month:"মার্চ",title:"সাধারণ গণিত",time:"দুপুর ২:০০ – ৪:০০",tag:"গণিত"},{day:"১৯",month:"মার্চ",title:"সাধারণ জ্ঞান",time:"সকাল ১০:০০ – ১২:০০",tag:"সাধারণ জ্ঞান"},{day:"২২",month:"মার্চ",title:"ইংরেজি ভাষা",time:"বিকাল ৩:০০ – ৫:০০",tag:"ইংরেজি"}];
+
+// ── HELPERS ───────────────────────────────────────────────
+var h=React.createElement;
+var useState=React.useState;
+var useMemo=React.useMemo;
+var useEffect=React.useEffect;
+
+function el(tag,props){var args=[tag,props||null];for(var i=2;i<arguments.length;i++)args.push(arguments[i]);return h.apply(null,args);}
+
+function removeBackground(canvas){
+  var ctx=canvas.getContext("2d"),d=ctx.getImageData(0,0,canvas.width,canvas.height);
+  for(var i=0;i<d.data.length;i+=4)if(d.data[i]>200&&d.data[i+1]>200&&d.data[i+2]>200)d.data[i+3]=0;
+  ctx.putImageData(d,0,0);return canvas.toDataURL("image/png");
+}
+function b64Blob(b64,type){var s=atob(b64.split(",")[1]),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return new Blob([a],{type:type});}
+function dlBlob(blob,name){var u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},300);}
+function slug(s){return(s||"candidate").replace(/\s+/g,"_").replace(/[^\w_]/g,"");}
+
+function exportExcel(list){
+  var rows=list.map(function(c,i){
+    var r={"ক্রম":i+1,"রেজিস্ট্রেশন আইডি":c.rid,"নাম (বাংলা)":c.nameBn,"Name":c.nameEn,"পিতার নাম":c.fatherBn,"Father":c.fatherEn,"মাতার নাম":c.motherBn,"Mother":c.motherEn,"জন্ম তারিখ":c.dob};
+    r["পরিচয়পত্র ধরন"]=c.idType==="nid"?"NID":"জন্ম নিবন্ধন";r["পরিচয়পত্র নম্বর"]=c.idNum;r["মোবাইল"]=c.mobile;r["ইমেইল"]=c.email;r["শিক্ষা"]=c.education;r["বিভাগ"]=c.division;r["জেলা"]=c.district;r["উপজেলা"]=c.upazila;r["ঠিকানা"]=c.address;
+    r["স্ট্যাটাস"]=c.status==="approved"?"অনুমোদিত":c.status==="rejected"?"প্রত্যাখ্যাত":"অপেক্ষমাণ";r["তারিখ"]=c.regDate||"";
+    return r;
+  });
+  var ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"প্রার্থী");
+  XLSX.writeFile(wb,"candidates_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
+
+async function exportZip(list,setP){
+  var zip=new JSZip();
+  for(var i=0;i<list.length;i++){
+    var c=list[i],n=slug(c.nameEn||c.nameBn)+"_"+c.rid,f=zip.folder(n);
+    if(c.ph)f.file("photo_300x300.jpg",b64Blob(c.ph,"image/jpeg"));
+    if(c.sg)f.file("signature_300x80.png",b64Blob(c.sg,"image/png"));
+    if(c.nid)f.file("nid_card.jpg",b64Blob(c.nid,"image/jpeg"));
+    if(c.doc)f.file("id_document.jpg",b64Blob(c.doc,"image/jpeg"));
+    setP(Math.round(((i+1)/list.length)*80));
+  }
+  setP(90);
+  var blob=await zip.generateAsync({type:"blob"});
+  setP(100);
+  dlBlob(blob,"images_"+new Date().toISOString().slice(0,10)+".zip");
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+function Toast(props){
+  useEffect(function(){var t=setTimeout(props.onDone,2800);return function(){clearTimeout(t);};},[]);
+  return h("div",{className:"toast"+(props.err?" te":"")},props.msg);
+}
+
+// ── LOGIN ─────────────────────────────────────────────────
+function Login(props){
+  var s=useState(""),u=s[0],setU=s[1];
+  var s2=useState(""),p=s2[0],setP=s2[1];
+  var s3=useState(""),e=s3[0],setE=s3[1];
+  function go(){if(!u||!p)return setE("ইউজার নাম ও পাসওয়ার্ড দিন।");setE("");props.onLogin(u);}
+  return h("div",{className:"page"},
+    h("div",{className:"card",style:{maxWidth:400}},
+      h("div",{className:"cb"},
+        h("div",{className:"ll"},"প"),
+        h("h2",{className:"lt"},"প্রার্থী পোর্টাল"),
+        h("p",{className:"ls"},"আপনার অ্যাকাউন্টে প্রবেশ করুন"),
+        h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+          h("div",{className:"fld"},h("label",null,"ইউজার নাম ",h("span",{className:"req"},"*")),h("input",{placeholder:"ইউজার নাম",value:u,onChange:function(x){setU(x.target.value);},onKeyDown:function(x){if(x.key==="Enter")go();}})),
+          h("div",{className:"fld"},h("label",null,"পাসওয়ার্ড ",h("span",{className:"req"},"*")),h("input",{type:"password",placeholder:"পাসওয়ার্ড",value:p,onChange:function(x){setP(x.target.value);},onKeyDown:function(x){if(x.key==="Enter")go();}})),
+          e&&h("p",{style:{color:"var(--d)",fontSize:12}},e),
+          h("button",{className:"btn bp bfull",onClick:go},"প্রবেশ করুন →")
+        ),
+        h("div",{className:"dv"},h("span",null,"অথবা")),
+        h("button",{className:"btn bg bfull",onClick:props.onAdmin},"🔐 অ্যাডমিন প্যানেল")
+      )
+    )
+  );
+}
+
+// ── ADMIN LOGIN ───────────────────────────────────────────
+function AdminLogin(props){
+  var s=useState(""),u=s[0],setU=s[1];
+  var s2=useState(""),p=s2[0],setP=s2[1];
+  var s3=useState(""),e=s3[0],setE=s3[1];
+  function go(){if(u==="admin"&&p==="admin@123"){setE("");props.onOk();}else setE("ভুল ইউজার নাম বা পাসওয়ার্ড।");}
+  return h("div",{className:"page"},
+    h("div",{className:"card",style:{maxWidth:380}},
+      h("div",{className:"cb"},
+        h("div",{className:"ll",style:{background:"linear-gradient(135deg,#2d1b00,#c77a25)"}},"⚙️"),
+        h("h2",{className:"lt"},"অ্যাডমিন লগইন"),
+        h("p",{className:"ls"},"শুধুমাত্র অনুমোদিত প্রশাসকের জন্য"),
+        h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+          h("div",{className:"fld"},h("label",null,"অ্যাডমিন ID ",h("span",{className:"req"},"*")),h("input",{placeholder:"admin",value:u,onChange:function(x){setU(x.target.value);},onKeyDown:function(x){if(x.key==="Enter")go();}})),
+          h("div",{className:"fld"},h("label",null,"পাসওয়ার্ড ",h("span",{className:"req"},"*")),h("input",{type:"password",placeholder:"পাসওয়ার্ড",value:p,onChange:function(x){setP(x.target.value);},onKeyDown:function(x){if(x.key==="Enter")go();}})),
+          e&&h("p",{style:{color:"var(--d)",fontSize:12}},e),
+          h("button",{className:"btn bg bfull",onClick:go},"অ্যাডমিন প্যানেলে প্রবেশ →"),
+          h("button",{className:"btn bs bfull",onClick:props.onBack},"← ফিরে যান")
+        ),
+        h("p",{style:{textAlign:"center",fontSize:11,color:"var(--m)",marginTop:13}},"ডিফল্ট: admin / admin@123")
+      )
+    )
+  );
+}
+
+// ── STEP 1 ────────────────────────────────────────────────
+function Step1(props){
+  var blank={nameBn:"",nameEn:"",fatherBn:"",fatherEn:"",motherBn:"",motherEn:"",dob:"",idType:"nid",idNum:"",mobile:"",education:"",email:"",division:"",district:"",upazila:"",address:""};
+  var sf=useState(blank),f=sf[0],setF=sf[1];
+  function s(k){return function(e){var n=Object.assign({},f);n[k]=e.target.value;setF(n);};}
+  var ds=DISTRICTS[f.division]||[];
+  var REQUIRED=["nameBn","nameEn","fatherBn","fatherEn","motherBn","motherEn","dob","idNum","mobile","education","email","division","district","upazila","address"];
+  var ok=REQUIRED.every(function(k){return f[k].trim();});
+  function stepDot(i){var cls="si"+(i===0?" act":"");return h("div",{className:cls,key:i},h("div",{className:"sn"},i===0?"১":i===1?"২":"✓"),h("div",{className:"sl"},["ব্যক্তিগত তথ্য","ডকুমেন্ট আপলোড","সম্পন্ন"][i]));}
+  return h("div",{className:"page"},
+    h("div",{className:"card cwide"},
+      h("div",{className:"ch"},h("h2",null,"ব্যক্তিগত তথ্য পূরণ করুন"),h("p",null,"সকল তারকা চিহ্নিত তথ্য অবশ্যই পূরণ করতে হবে")),
+      h("div",{className:"steps"},[0,1,2].map(stepDot)),
+      h("div",{className:"cb"},
+        h("div",{className:"grid"},
+          h("div",{className:"fld"},h("label",null,"নাম (বাংলা) ",h("span",{className:"req"},"*")),h("input",{placeholder:"বাংলায় নাম",value:f.nameBn,onChange:s("nameBn")})),
+          h("div",{className:"fld"},h("label",null,"Name (English) ",h("span",{className:"req"},"*")),h("input",{placeholder:"English name",value:f.nameEn,onChange:s("nameEn")})),
+          h("div",{className:"fld"},h("label",null,"পিতার নাম (বাংলা) ",h("span",{className:"req"},"*")),h("input",{placeholder:"পিতার নাম",value:f.fatherBn,onChange:s("fatherBn")})),
+          h("div",{className:"fld"},h("label",null,"Father's Name ",h("span",{className:"req"},"*")),h("input",{placeholder:"Father's name",value:f.fatherEn,onChange:s("fatherEn")})),
+          h("div",{className:"fld"},h("label",null,"মাতার নাম (বাংলা) ",h("span",{className:"req"},"*")),h("input",{placeholder:"মাতার নাম",value:f.motherBn,onChange:s("motherBn")})),
+          h("div",{className:"fld"},h("label",null,"Mother's Name ",h("span",{className:"req"},"*")),h("input",{placeholder:"Mother's name",value:f.motherEn,onChange:s("motherEn")})),
+          h("div",{className:"fld"},h("label",null,"জন্ম তারিখ ",h("span",{className:"req"},"*")),h("input",{type:"date",value:f.dob,onChange:s("dob")})),
+          h("div",{className:"fld"},h("label",null,"পরিচয়পত্রের ধরন ",h("span",{className:"req"},"*")),
+            h("div",{className:"rg"},
+              h("label",{className:"rl"+(f.idType==="nid"?" on":""),onClick:function(){var n=Object.assign({},f);n.idType="nid";setF(n);}},"NID"),
+              h("label",{className:"rl"+(f.idType==="birth"?" on":""),onClick:function(){var n=Object.assign({},f);n.idType="birth";setF(n);}},"জন্ম নিবন্ধন")
+            )
+          ),
+          h("div",{className:"fld full"},h("label",null,(f.idType==="nid"?"NID নম্বর":"জন্ম নিবন্ধন নম্বর")," ",h("span",{className:"req"},"*")),h("input",{placeholder:f.idType==="nid"?"১৭ সংখ্যার NID":"জন্ম নিবন্ধন নম্বর",value:f.idNum,onChange:s("idNum")})),
+          h("div",{className:"fld"},h("label",null,"মোবাইল নম্বর ",h("span",{className:"req"},"*")),h("input",{placeholder:"01XXXXXXXXX",value:f.mobile,onChange:s("mobile")})),
+          h("div",{className:"fld"},h("label",null,"শিক্ষাগত যোগ্যতা ",h("span",{className:"req"},"*")),
+            h("select",{value:f.education,onChange:s("education")},
+              h("option",{value:""},"নির্বাচন করুন"),
+              EDUCATIONS.map(function(e){return h("option",{key:e,value:e},e);})
+            )
+          ),
+          h("div",{className:"fld full"},h("label",null,"ইমেইল ",h("span",{className:"req"},"*")),h("input",{type:"email",placeholder:"example@email.com",value:f.email,onChange:s("email")})),
+          h("div",{className:"fld"},h("label",null,"বিভাগ ",h("span",{className:"req"},"*")),
+            h("select",{value:f.division,onChange:function(e){var n=Object.assign({},f);n.division=e.target.value;n.district="";n.upazila="";setF(n);}},
+              h("option",{value:""},"বিভাগ নির্বাচন করুন"),
+              DIVISIONS.map(function(d){return h("option",{key:d,value:d},d);})
+            )
+          ),
+          h("div",{className:"fld"},h("label",null,"জেলা ",h("span",{className:"req"},"*")),
+            h("select",{value:f.district,onChange:s("district"),disabled:!f.division},
+              h("option",{value:""},"জেলা নির্বাচন করুন"),
+              ds.map(function(d){return h("option",{key:d,value:d},d);})
+            )
+          ),
+          h("div",{className:"fld"},h("label",null,"উপজেলা ",h("span",{className:"req"},"*")),
+            h("select",{value:f.upazila,onChange:s("upazila"),disabled:!f.district},
+              h("option",{value:""},"উপজেলা নির্বাচন করুন"),
+              UPAZILAS.map(function(u){return h("option",{key:u,value:u},u);})
+            )
+          ),
+          h("div",{className:"fld full"},h("label",null,"পূর্ণ ঠিকানা ",h("span",{className:"req"},"*")),h("textarea",{placeholder:"গ্রাম/মহল্লা, ডাকঘর, থানা সহ পূর্ণ ঠিকানা",value:f.address,onChange:s("address")}))
+        ),
+        h("div",{style:{marginTop:16}},
+          h("button",{className:"btn bp bfull",style:{opacity:ok?1:.6},onClick:function(){if(ok)props.onNext(f);}},"পরবর্তী ধাপ: ডকুমেন্ট আপলোড →"),
+          !ok&&h("p",{style:{color:"var(--d)",fontSize:11,marginTop:6,textAlign:"center"}},"সকল তথ্য পূরণ করুন")
+        )
+      )
+    )
+  );
+}
+
+// ── STEP 2 ────────────────────────────────────────────────
+function Step2(props){
+  var sn=useState(null),nid=sn[0],setNid=sn[1];
+  var sd=useState(null),doc=sd[0],setDoc=sd[1];
+  var sp=useState(null),ph=sp[0],setPh=sp[1];
+  var sg=useState(null),sig=sg[0],setSig=sg[1];
+  var sproc=useState(false),proc=sproc[0],setProc=sproc[1];
+
+  function rf(file,cb){var r=new FileReader();r.onload=function(e){cb(e.target.result);};r.readAsDataURL(file);}
+  function rz(file,fn,w,wh){
+    rf(file,function(src){
+      var img=new Image();
+      img.onload=function(){var c=document.createElement("canvas");c.width=w;c.height=wh;c.getContext("2d").drawImage(img,0,0,w,wh);fn(c.toDataURL("image/jpeg",.92));};
+      img.src=src;
+    });
+  }
+  function hs(file){
+    setProc(true);
+    rf(file,function(src){
+      var img=new Image();
+      img.onload=function(){var c=document.createElement("canvas");c.width=300;c.height=80;c.getContext("2d").drawImage(img,0,0,300,80);setSig(removeBackground(c));setProc(false);};
+      img.src=src;
+    });
+  }
+  var can=nid&&doc&&ph&&sig;
+  function stepDot(i){var cls="si"+(i===1?" act":i===0?" dn":"");return h("div",{className:cls,key:i},h("div",{className:"sn"},i===0?"✓":i===1?"২":"৩"),h("div",{className:"sl"},["ব্যক্তিগত তথ্য","ডকুমেন্ট আপলোড","সম্পন্ন"][i]));}
+  return h("div",{className:"page"},
+    h("div",{className:"card cwide"},
+      h("div",{className:"ch"},h("h2",null,"ডকুমেন্ট ও ছবি আপলোড করুন"),h("p",null,"সকল ডকুমেন্ট স্পষ্ট ও পাঠযোগ্য হতে হবে")),
+      h("div",{className:"steps"},[0,1,2].map(stepDot)),
+      h("div",{className:"cb"},
+        h("div",{className:"grid"},
+          h("div",{className:"fld full"},
+            h("label",null,"জাতীয় পরিচয়পত্র (NID কার্ড) ",h("span",{className:"req"},"*")),
+            h("div",{className:"uz"+(nid?" ok":"")},
+              h("input",{type:"file",accept:"image/*",onChange:function(e){if(e.target.files[0])rf(e.target.files[0],setNid);}}),
+              !nid?h("div",null,h("div",{className:"ui"},"🪪"),h("div",{className:"ul"},"NID কার্ডের ছবি বা স্ক্যান"),h("div",{className:"us"},"যেকোনো সাইজ • JPG, PNG")):
+              h("div",null,h("div",{className:"up"},h("img",{src:nid,alt:"nid"})),h("span",{className:"ub"},"✓ আপলোড সম্পন্ন"))
+            )
+          ),
+          h("div",{className:"fld full"},
+            h("label",null,"NID / জন্ম নিবন্ধন সনদ ",h("span",{className:"req"},"*")),
+            h("div",{className:"uz"+(doc?" ok":"")},
+              h("input",{type:"file",accept:"image/*,application/pdf",onChange:function(e){if(e.target.files[0])rf(e.target.files[0],setDoc);}}),
+              !doc?h("div",null,h("div",{className:"ui"},"📄"),h("div",{className:"ul"},"NID / জন্ম নিবন্ধন সনদ"),h("div",{className:"us"},"JPG, PNG, PDF গ্রহণযোগ্য")):
+              h("div",null,h("div",{style:{fontSize:36,marginBottom:4}},"✅"),h("span",{className:"ub"},"✓ ডকুমেন্ট সম্পন্ন"))
+            )
+          ),
+          h("div",{className:"fld"},
+            h("label",null,"প্রার্থীর ছবি (৩০০×৩০০ px) ",h("span",{className:"req"},"*")),
+            h("div",{className:"uz"+(ph?" ok":""),style:{minHeight:145}},
+              h("input",{type:"file",accept:"image/*",onChange:function(e){if(e.target.files[0])rz(e.target.files[0],setPh,300,300);}}),
+              !ph?h("div",null,h("div",{className:"ui"},"🖼️"),h("div",{className:"ul"},"পাসপোর্ট সাইজ ছবি"),h("div",{className:"us"},"স্বয়ংক্রিয়ভাবে ৩০০×৩০০ হবে")):
+              h("div",null,h("div",{className:"up"},h("img",{src:ph,alt:"ph",style:{width:75,height:75,borderRadius:4}})),h("span",{className:"ub"},"✓ ছবি সম্পন্ন"))
+            )
+          ),
+          h("div",{className:"fld"},
+            h("label",null,"স্বাক্ষর (৩০০×৮০ px) ",h("span",{className:"req"},"*")),
+            h("div",{className:"uz"+(sig?" ok":""),style:{minHeight:145}},
+              h("input",{type:"file",accept:"image/*",disabled:proc,onChange:function(e){if(e.target.files[0])hs(e.target.files[0]);}}),
+              proc?h("div",null,h("div",{className:"ui"},"⏳"),h("div",{className:"ul"},"ব্যাকগ্রাউন্ড রিমুভ হচ্ছে...")):
+              !sig?h("div",null,h("div",{className:"ui"},"✍️"),h("div",{className:"ul"},"স্বাক্ষরের ছবি আপলোড করুন"),h("div",{className:"us"},"ব্যাকগ্রাউন্ড স্বয়ংক্রিয় রিমুভ • ৩০০×৮০ px")):
+              h("div",null,h("div",{className:"up",style:{background:"repeating-conic-gradient(#555 0% 25%,#333 0% 50%) 0 0/10px 10px",borderRadius:4,padding:4}},h("img",{src:sig,alt:"sig",style:{height:45,objectFit:"contain"}})),h("span",{className:"ub"},"✓ স্বাক্ষর সম্পন্ন"))
+            )
+          )
+        ),
+        h("div",{className:"brow",style:{marginTop:16}},
+          h("button",{className:"btn bs",style:{padding:"9px 16px"},onClick:props.onBack},"← পূর্ববর্তী"),
+          h("button",{className:"btn bp",style:{flex:1,opacity:can?1:.6},onClick:function(){if(can)props.onComplete(Object.assign({},props.pd,{nid:nid,doc:doc,ph:ph,sg:sig}));}},
+            "রেজিস্ট্রেশন সম্পন্ন করুন ✓")
+        ),
+        !can&&h("p",{style:{color:"var(--d)",fontSize:11,marginTop:6,textAlign:"center"}},"সকল ডকুমেন্ট আপলোড করুন")
+      )
+    )
+  );
+}
+
+// ── SUCCESS ───────────────────────────────────────────────
+function Success(props){
+  return h("div",{className:"page"},
+    h("div",{className:"card",style:{maxWidth:430}},
+      h("div",{className:"cb",style:{textAlign:"center",padding:32}},
+        h("div",{className:"sic"},"🎉"),
+        h("h2",{className:"stitle"},"রেজিস্ট্রেশন সফল!"),
+        h("p",{className:"ssub"},"আপনার রেজিস্ট্রেশন সফলভাবে সম্পন্ন হয়েছে।"),
+        h("div",{className:"rid"},h("div",{className:"ridl"},"আপনার রেজিস্ট্রেশন আইডি"),h("div",{className:"ridv"},props.regId)),
+        h("p",{style:{fontSize:12,color:"var(--m)",marginBottom:16}},"এই আইডিটি সংরক্ষণ করুন।"),
+        h("button",{className:"btn bp bfull",onClick:props.onDash},"ড্যাশবোর্ডে যান →")
+      )
+    )
+  );
+}
+
+// ── CANDIDATE DASHBOARD ───────────────────────────────────
+function CandidateDash(props){
+  var st=useState(0),tab=st[0],setTab=st[1];
+  var sb=useState([{n:"সিভিল সার্ভিস হ্যান্ডবুক ২০২৪",s:"৪.২ MB",d:"০১ মার্চ"},{n:"বাংলাদেশ বিষয়াবলি গাইড",s:"৬.৮ MB",d:"১৫ ফেব্রুয়ারি"}]),books=sb[0],setBooks=sb[1];
+  var sbf=useState(null),bf=sbf[0],setBf=sbf[1];
+  var ssf=useState(null),sf=ssf[0],setSf=ssf[1];
+  var d=props.data||{};
+  var tabs=["👤 প্রোফাইল","📚 অকুপেশন ও সিলেবাস","📅 ক্লাস শিডিউল"];
+  function fld(l,v){return h("div",{className:"pi",key:l},h("div",{className:"pil"},l),h("div",{className:"piv"},v||"—"));}
+  function pbox(l,src,ic){return h("div",{className:"pb",key:l},h("div",{className:"pbl"},l),src?h("img",{src:src,alt:l}):h("div",{className:"pbe"},ic));}
+  return h("div",{style:{flex:1,background:"var(--bg)"}},
+    h("div",{className:"dash"},
+      h("div",{className:"dw"},
+        h("div",{className:"av"},d.ph?h("img",{src:d.ph,alt:"av"}):(props.user||"?").charAt(0).toUpperCase()),
+        h("div",{className:"wt"},h("h3",null,"স্বাগতম, "+(d.nameBn||props.user)+"!"),h("p",null,"আইডি: "+props.rid+" • "+(d.education||"প্রার্থী"))),
+        h("div",{className:"wb"},"✅ যাচাইকৃত")
+      ),
+      h("div",{className:"ntabs"},tabs.map(function(t,i){return h("button",{key:i,className:"ntab"+(tab===i?" on":""),onClick:function(){setTab(i);}},t);})),
+      tab===0&&h("div",{className:"tp"},
+        h("div",{className:"st"},"🪪 ব্যক্তিগত তথ্য"),
+        h("div",{className:"pg"},
+          [["নাম (বাংলা)",d.nameBn],["Name (English)",d.nameEn],["পিতার নাম",d.fatherBn],["Father",d.fatherEn],["মাতার নাম",d.motherBn],["Mother",d.motherEn],["জন্ম তারিখ",d.dob],["মোবাইল",d.mobile],["ইমেইল",d.email],["শিক্ষা",d.education],["বিভাগ",d.division],["জেলা",d.district],["উপজেলা",d.upazila]].map(function(x){return fld(x[0],x[1]);}),
+          h("div",{className:"pi",style:{gridColumn:"1/-1"}},h("div",{className:"pil"},"পূর্ণ ঠিকানা"),h("div",{className:"piv"},d.address||"—"))
+        ),
+        h("div",{className:"pph"},[["ছবি",d.ph,"🖼️"],["স্বাক্ষর",d.sg,"✍️"],["NID",d.nid,"🪪"]].map(function(x){return pbox(x[0],x[1],x[2]);}))
+      ),
+      tab===1&&h("div",{className:"tp"},
+        h("div",{className:"st"},"🏛️ অকুপেশন"),
+        h("div",{className:"oc"},h("div",{style:{fontSize:28}},"⚖️"),h("div",{className:"oi"},h("h4",null,"সিভিল সার্ভিস (BCS)"),h("p",null,"Bangladesh Civil Service")),h("span",{style:{background:"rgba(63,185,80,.1)",border:"1px solid var(--ok)",color:"var(--ok)",borderRadius:6,padding:"2px 8px",fontSize:11}},"সক্রিয়")),
+        h("div",{className:"st",style:{marginTop:20}},"📖 বই / সিলেবাস"),
+        books.map(function(b,i){return h("div",{className:"oc",key:i},h("div",{style:{fontSize:26}},"📗"),h("div",{className:"oi"},h("h4",null,b.n),h("p",null,b.s+" • "+b.d)),h("button",{className:"ob"},"⬇ ডাউনলোড"));}),
+        h("div",{className:"uz"+(bf?" ok":""),style:{marginTop:9}},
+          h("input",{type:"file",accept:".pdf,.doc,.docx",onChange:function(e){if(e.target.files[0]){var f=e.target.files[0];setBf(f);setBooks(function(p){return p.concat([{n:f.name,s:(f.size/1024/1024).toFixed(1)+" MB",d:"আজকে"}]);});}}}),
+          !bf?h("div",null,h("div",{className:"ui"},"📤"),h("div",{className:"ul"},"নতুন বই / সিলেবাস আপলোড"),h("div",{className:"us"},"PDF, DOC, DOCX")):
+          h("div",null,h("div",{style:{fontSize:32}},"✅"),h("span",{className:"ub"},"✓ আপলোড সম্পন্ন"))
+        )
+      ),
+      tab===2&&h("div",{className:"tp"},
+        h("div",{className:"st"},"📅 ক্লাস শিডিউল"),
+        h("div",{className:"sc"},SCH.map(function(x,i){
+          return h("div",{className:"sci",key:i},
+            h("div",{className:"sd"},h("div",{className:"sdy"},x.day),h("div",{className:"smn"},x.month)),
+            h("div",{className:"sif"},h("div",{className:"sit"},x.title),h("div",{className:"stm"},"🕐 "+x.time)),
+            h("div",{className:"sbg"},x.tag)
+          );
+        })),
+        h("div",{style:{marginTop:16}},
+          h("div",{className:"st"},"📤 নতুন শিডিউল আপলোড"),
+          h("div",{className:"uz"+(sf?" ok":"")},
+            h("input",{type:"file",accept:".pdf,.doc,.docx,image/*",onChange:function(e){if(e.target.files[0])setSf(e.target.files[0]);}}),
+            !sf?h("div",null,h("div",{className:"ui"},"📋"),h("div",{className:"ul"},"শিডিউল আপলোড করুন"),h("div",{className:"us"},"PDF, DOC, Image")):
+            h("div",null,h("div",{style:{fontSize:32}},"✅"),h("span",{className:"ub"},"✓ "+sf.name+" আপলোড হয়েছে"))
+          )
+        )
+      )
+    )
+  );
+}
+
+// ── CANDIDATE MODAL ───────────────────────────────────────
+function CModal(props){
+  var c=props.c;
+  function brow(l,src){return h("div",{className:"mpb",key:l},h("div",{className:"mpl"},l),src?h("img",{src:src,alt:l}):h("div",{style:{height:56,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--m)",fontSize:22}},"—"));}
+  function fld(l,v){return h("div",{className:"pi",key:l},h("div",{className:"pil"},l),h("div",{className:"piv"},v||"—"));}
+  function statusBadge(){if(c.status==="approved")return h("span",{className:"badge bo"},"✓ অনুমোদিত");if(c.status==="rejected")return h("span",{className:"badge be"},"✕ প্রত্যাখ্যাত");return h("span",{className:"badge bp2"},"⏳ অপেক্ষমাণ");}
+  return h("div",{className:"ov",onClick:function(e){if(e.target===e.currentTarget)props.onClose();}},
+    h("div",{className:"modal"},
+      h("div",{className:"mh"},h("h3",null,"প্রার্থীর বিস্তারিত"),h("button",{className:"mc",onClick:props.onClose},"✕")),
+      h("div",{className:"mb"},
+        h("div",{style:{display:"flex",alignItems:"center",gap:13,marginBottom:15}},
+          h("div",{className:"av",style:{width:52,height:52,fontSize:20}},c.ph?h("img",{src:c.ph,alt:"av"}):(c.nameEn||"?").charAt(0)),
+          h("div",null,h("div",{style:{fontSize:15,fontWeight:700,color:"var(--t)"}},c.nameBn),h("div",{style:{fontSize:12,color:"var(--m)"}},c.nameEn+" • "+c.rid)),
+          h("div",{style:{marginLeft:"auto"}},statusBadge())
+        ),
+        h("div",{className:"pg",style:{gap:7}},
+          [["পিতার নাম",c.fatherBn],["মাতার নাম",c.motherBn],["জন্ম তারিখ",c.dob],[c.idType==="nid"?"NID":"জন্ম নিবন্ধন",c.idNum],["মোবাইল",c.mobile],["ইমেইল",c.email],["শিক্ষা",c.education],["বিভাগ",c.division],["জেলা",c.district],["উপজেলা",c.upazila]].map(function(x){return fld(x[0],x[1]);}),
+          h("div",{className:"pi",style:{gridColumn:"1/-1"}},h("div",{className:"pil"},"পূর্ণ ঠিকানা"),h("div",{className:"piv"},c.address))
+        ),
+        h("div",{className:"mphoto"},[["ছবি (৩০০×৩০০)",c.ph],["স্বাক্ষর (৩০০×৮০)",c.sg],["NID কার্ড",c.nid],["পরিচয় সনদ",c.doc]].map(function(x){return brow(x[0],x[1]);})),
+        h("div",{style:{display:"flex",gap:9,marginTop:16,flexWrap:"wrap"}},
+          c.status!=="approved"&&h("button",{className:"btn bok",onClick:function(){props.onApprove(c.rid);props.onClose();}},"✓ অনুমোদন করুন"),
+          c.status!=="rejected"&&h("button",{className:"btn br",onClick:function(){props.onReject(c.rid);props.onClose();}},"✕ প্রত্যাখ্যান করুন"),
+          h("button",{className:"btn bs",style:{marginLeft:"auto"},onClick:props.onClose},"বন্ধ করুন")
+        )
+      )
+    )
+  );
+}
+
+// ── ADMIN PANEL ───────────────────────────────────────────
+function AdminPanel(props){
+  var sv=useState("dash"),view=sv[0],setView=sv[1];
+  var ss=useState(""),search=ss[0],setSearch=ss[1];
+  var sf=useState("all"),fst=sf[0],setFst=sf[1];
+  var ssel=useState(null),sel=ssel[0],setSel=ssel[1];
+  var sdp=useState(0),dlP=sdp[0],setDlP=sdp[1];
+  var sda=useState(false),dlA=sda[0],setDlA=sda[1];
+  var st=useState(null),toast=st[0],setToast=st[1];
+  function msg(m,e){setToast({m:m,e:!!e});}
+
+  var candidates=props.candidates;
+  var stats={total:candidates.length,pending:candidates.filter(function(c){return c.status==="pending";}).length,approved:candidates.filter(function(c){return c.status==="approved";}).length,rejected:candidates.filter(function(c){return c.status==="rejected";}).length};
+
+  var fl=candidates.filter(function(c){
+    var q=search.toLowerCase();
+    var mq=!q||(c.nameBn||"").includes(q)||(c.nameEn||"").toLowerCase().includes(q)||(c.rid||"").includes(q)||(c.mobile||"").includes(q)||(c.idNum||"").includes(q);
+    var ms=fst==="all"||c.status===fst;
+    return mq&&ms;
+  });
+
+  function approve(rid){props.setCandidates(function(p){return p.map(function(c){return c.rid===rid?Object.assign({},c,{status:"approved"}):c;});});}
+  function reject(rid){props.setCandidates(function(p){return p.map(function(c){return c.rid===rid?Object.assign({},c,{status:"rejected"}):c;});});}
+  function del(rid){if(window.confirm("এই প্রার্থীকে মুছে ফেলবেন?"))props.setCandidates(function(p){return p.filter(function(c){return c.rid!==rid;});});}
+  function approveAll(){props.setCandidates(function(p){return p.map(function(c){return c.status==="pending"?Object.assign({},c,{status:"approved"}):c;});});msg("সকল অপেক্ষমাণ প্রার্থী অনুমোদিত!");}
+
+  function hXL(){if(!candidates.length)return msg("কোনো প্রার্থী নেই।",true);exportExcel(fl.length&&fl.length<candidates.length?fl:candidates);msg("Excel ডাউনলোড হচ্ছে...");}
+  async function hZip(){
+    var list=fl.length&&fl.length<candidates.length?fl:candidates;
+    if(!list.length)return msg("কোনো প্রার্থী নেই।",true);
+    setDlA(true);setDlP(0);
+    try{await exportZip(list,setDlP);msg("ZIP ডাউনলোড সম্পন্ন!");}catch(ex){msg("ZIP তৈরিতে সমস্যা।",true);}
+    setDlA(false);setDlP(0);
+  }
+
+  function statusBadge(status){if(status==="approved")return h("span",{className:"badge bo"},"✓ অনুমোদিত");if(status==="rejected")return h("span",{className:"badge be"},"✕ প্রত্যাখ্যাত");return h("span",{className:"badge bp2"},"⏳ অপেক্ষমাণ");}
+
+  var sides=[["dash","📊","ড্যাশবোর্ড","all"],["list","👥","সকল প্রার্থী","all"],["approved","✅","অনুমোদিত","approved"],["rejected","❌","প্রত্যাখ্যাত","rejected"],["pending","⏳","অপেক্ষমাণ","pending"]];
+  var showList=view!=="dash";
+
+  return h("div",{className:"aw"},
+    toast&&h(Toast,{msg:toast.m,err:toast.e,onDone:function(){setToast(null);}}),
+    sel&&h(CModal,{c:sel,onClose:function(){setSel(null);},onApprove:function(r){approve(r);msg("অনুমোদন সম্পন্ন!");},onReject:function(r){reject(r);msg("প্রত্যাখ্যাত হয়েছে.");}}),
+    h("div",{className:"aside"},
+      h("h3",null,"⚙️ অ্যাডমিন মেনু"),
+      sides.map(function(x){
+        var cnt=x[0]==="dash"?"":x[0]==="list"?stats.total:x[0]==="approved"?stats.approved:x[0]==="rejected"?stats.rejected:stats.pending;
+        return h("button",{key:x[0],className:"asb"+(view===x[0]?" on":""),onClick:function(){setView(x[0]);setFst(x[3]);}},
+          h("span",{style:{fontSize:15}},x[1]),x[2],h("span",{className:"cnt"},cnt));
+      }),
+      h("div",{style:{height:1,background:"var(--b)",margin:"13px 0"}}),
+      h("div",{style:{fontSize:11,color:"var(--m)",marginBottom:7,fontWeight:600,padding:"0 3px"}},"⬇ ডাউনলোড"),
+      h("button",{className:"asb",style:{color:"var(--ok)"},onClick:hXL},h("span",{style:{fontSize:15}},"📊"),"Excel ডাউনলোড"),
+      h("button",{className:"asb",style:{color:"var(--inf)"},disabled:dlA,onClick:hZip},h("span",{style:{fontSize:15}},"🗜️"),dlA?"তৈরি হচ্ছে...":"ZIP ডাউনলোড")
+    ),
+    h("div",{className:"amain"},
+      !showList&&h("div",null,
+        h("div",{style:{marginBottom:18}},h("div",{style:{fontFamily:"'Noto Serif Bengali',serif",fontSize:19,color:"var(--g)",fontWeight:700}},"📊 ড্যাশবোর্ড"),h("p",{style:{fontSize:12,color:"var(--m)",marginTop:3}},"সকল প্রার্থীর সারসংক্ষেপ")),
+        h("div",{className:"srow"},
+          [["মোট প্রার্থী",stats.total,"sv-t","👥"],["অপেক্ষমাণ",stats.pending,"sv-p","⏳"],["অনুমোদিত",stats.approved,"sv-o","✅"],["প্রত্যাখ্যাত",stats.rejected,"sv-r","❌"]].map(function(x){
+            return h("div",{key:x[0],className:"sc2"},h("div",{className:"sv "+x[2]},x[3]+" "+x[1]),h("div",{className:"sv2"},x[0]));
+          })
+        ),
+        h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
+          h("button",{className:"btn bok bfull",style:{padding:"13px",fontSize:13},onClick:hXL},"📊 Excel ডাউনলোড"),
+          h("button",{className:"btn bi bfull",style:{padding:"13px",fontSize:13},disabled:dlA,onClick:hZip},dlA?"⏳ তৈরি হচ্ছে...":"🗜️ সব ছবি ZIP")
+        ),
+        dlA&&h("div",{className:"dlb"},h("div",{className:"dlbl"},"ZIP তৈরি হচ্ছে... "+dlP+"%"),h("div",{className:"dlbt"},h("div",{className:"dlbf",style:{width:dlP+"%"}}))),
+        h("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:9}},
+          h("button",{className:"btn bg",style:{opacity:stats.pending?1:.5},disabled:!stats.pending,onClick:approveAll},"⚡ সকল অপেক্ষমাণ অনুমোদন ("+stats.pending+")")
+        ),
+        h("div",{className:"tw"},
+          h("div",{className:"tt"},h("h3",null,"সাম্প্রতিক নিবন্ধন")),
+          !candidates.length?h("div",{style:{textAlign:"center",padding:36,color:"var(--m)"}},"কোনো প্রার্থী নেই।"):
+          h("table",null,
+            h("thead",null,h("tr",null,h("th",null,"নাম"),h("th",null,"মোবাইল"),h("th",null,"শিক্ষা"),h("th",null,"স্ট্যাটাস"),h("th",null,"অ্যাকশন"))),
+            h("tbody",null,[].concat(candidates).reverse().slice(0,8).map(function(c){
+              return h("tr",{key:c.rid},
+                h("td",null,h("div",{style:{fontWeight:600,fontSize:13}},c.nameBn),h("div",{style:{fontSize:10,color:"var(--m)"}},c.rid)),
+                h("td",null,c.mobile),h("td",null,c.education),h("td",null,statusBadge(c.status)),
+                h("td",null,h("button",{className:"btn bi",style:{padding:"3px 9px",fontSize:11},onClick:function(){setSel(c);}},"👁 দেখুন"))
+              );
+            }))
+          )
+        )
+      ),
+      showList&&h("div",null,
+        dlA&&h("div",{className:"dlb"},h("div",{className:"dlbl"},"ZIP তৈরি হচ্ছে... "+dlP+"%"),h("div",{className:"dlbt"},h("div",{className:"dlbf",style:{width:dlP+"%"}}))),
+        h("div",{className:"tw"},
+          h("div",{className:"tt"},
+            h("h3",null,(view==="list"?"সকল প্রার্থী":view==="approved"?"✅ অনুমোদিত":view==="rejected"?"❌ প্রত্যাখ্যাত":"⏳ অপেক্ষমাণ")+" ("+fl.length+")"),
+            h("input",{className:"sb",placeholder:"🔍 নাম, আইডি, মোবাইল...",value:search,onChange:function(e){setSearch(e.target.value);}}),
+            h("div",{className:"ta"},
+              h("button",{className:"btn bok",style:{padding:"5px 11px",fontSize:11},onClick:hXL},"📊 Excel"),
+              h("button",{className:"btn bi",style:{padding:"5px 11px",fontSize:11},disabled:dlA,onClick:hZip},dlA?"⏳":"🗜️ ZIP"),
+              view==="pending"&&h("button",{className:"btn bg",style:{padding:"5px 11px",fontSize:11},disabled:!stats.pending,onClick:approveAll},"⚡ সব অনুমোদন")
+            )
+          ),
+          !fl.length?h("div",{style:{textAlign:"center",padding:34,color:"var(--m)"}},"কোনো প্রার্থী পাওয়া যায়নি।"):
+          h("div",{style:{overflowX:"auto"}},
+            h("table",null,
+              h("thead",null,h("tr",null,["#","নাম","পিতার নাম","মোবাইল","শিক্ষা","জেলা","স্ট্যাটাস","অ্যাকশন"].map(function(x){return h("th",{key:x},x);}))),
+              h("tbody",null,fl.map(function(c,i){
+                return h("tr",{key:c.rid},
+                  h("td",{style:{color:"var(--m)",fontSize:11}},i+1),
+                  h("td",null,
+                    h("div",{style:{display:"flex",alignItems:"center",gap:7}},
+                      c.ph?h("img",{src:c.ph,style:{width:28,height:28,borderRadius:"50%",objectFit:"cover"},alt:""}):h("div",{style:{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,var(--a),var(--g))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#fff",fontWeight:700,flexShrink:0}},(c.nameBn||"?").charAt(0)),
+                      h("div",null,h("div",{style:{fontWeight:600,fontSize:13}},c.nameBn),h("div",{style:{fontSize:10,color:"var(--m)"}},c.rid))
+                    )
+                  ),
+                  h("td",{style:{fontSize:12}},c.fatherBn||"—"),
+                  h("td",{style:{fontSize:12}},c.mobile),
+                  h("td",{style:{fontSize:12}},c.education),
+                  h("td",{style:{fontSize:12}},c.district),
+                  h("td",null,statusBadge(c.status)),
+                  h("td",null,
+                    h("div",{className:"tda"},
+                      h("button",{className:"btn bi",style:{padding:"3px 8px",fontSize:11},onClick:function(){setSel(c);}},"👁"),
+                      c.status!=="approved"&&h("button",{className:"btn bok",style:{padding:"3px 8px",fontSize:11},title:"অনুমোদন",onClick:function(){approve(c.rid);msg("অনুমোদন সম্পন্ন!");}}, "✓"),
+                      c.status!=="rejected"&&h("button",{className:"btn br",style:{padding:"3px 8px",fontSize:11},title:"প্রত্যাখ্যান",onClick:function(){reject(c.rid);msg("প্রত্যাখ্যাত হয়েছে.");}},"✕"),
+                      h("button",{className:"btn br",style:{padding:"3px 8px",fontSize:11},title:"মুছুন",onClick:function(){del(c.rid);}},"🗑")
+                    )
+                  )
+                );
+              }))
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+// ── ROOT APP ──────────────────────────────────────────────
+function App(){
+  var ssc=useState("login"),sc=ssc[0],setSc=ssc[1];
+  var su=useState(null),user=su[0],setUser=su[1];
+  var ss1=useState(null),s1=ss1[0],setS1=ss1[1];
+  var sdata=useState(null),data=sdata[0],setData=sdata[1];
+  var srid=useState(null),rid=srid[0],setRid=srid[1];
+  var scand=useState([]),candidates=scand[0],setCandidates=scand[1];
+
+  function logout(){setSc("login");setUser(null);setData(null);setRid(null);setS1(null);}
+  function alogout(){setSc("login");setUser(null);}
+
+  function completeReg(all){
+    var newRid="BD-"+Math.floor(100000+Math.random()*900000);
+    var regDate=new Date().toLocaleDateString("bn-BD");
+    setCandidates(function(p){return p.concat([Object.assign({},all,{rid:newRid,status:"pending",regDate:regDate,user:user})]);});
+    setData(all);setRid(newRid);setSc("success");
+  }
+
+  var isA=sc==="admin",isD=sc==="dashboard";
+  return h("div",{className:"app"},
+    h("div",{className:"hdr"},
+      h("div",{className:"hlogo"},"প"),
+      h("div",{className:"htitle"},h("h1",null,"প্রার্থী নিবন্ধন পোর্টাল"),h("p",null,"Candidate Registration Portal")),
+      h("div",{className:"hright"},
+        isA&&h("span",{className:"abadge"},"⚙️ অ্যাডমিন"),
+        isA&&h("button",{className:"logbtn",onClick:alogout},"লগআউট"),
+        isD&&h("span",{className:"hbadge"},"👤 "+user),
+        isD&&h("button",{className:"logbtn",onClick:logout},"লগআউট"),
+        !isA&&!isD&&user&&h("span",{className:"hbadge"},"👤 "+user)
+      )
+    ),
+    sc==="login"&&h(Login,{onLogin:function(u){setUser(u);setSc("reg1");},onAdmin:function(){setSc("adminLogin");}}),
+    sc==="adminLogin"&&h(AdminLogin,{onOk:function(){setUser("admin");setSc("admin");},onBack:function(){setSc("login");}}),
+    sc==="reg1"&&h(Step1,{onNext:function(d){setS1(d);setSc("reg2");}}),
+    sc==="reg2"&&h(Step2,{pd:s1,onComplete:completeReg,onBack:function(){setSc("reg1");}}),
+    sc==="success"&&h(Success,{regId:rid,onDash:function(){setSc("dashboard");}}),
+    sc==="dashboard"&&h(CandidateDash,{user:user,rid:rid,data:data}),
+    sc==="admin"&&h(AdminPanel,{candidates:candidates,setCandidates:setCandidates})
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App,null));
+</script>
+</body>
+</html>
